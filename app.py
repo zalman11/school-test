@@ -12,6 +12,11 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import select, desc
+import subprocess
+import sys
+import time
+import re
+from flask import Flask
 
 # --- PYINSTALLER PATH COMPLIANCE ---
 def get_resource_path(relative_path: str) -> str:
@@ -1064,7 +1069,56 @@ def open_browser():
     except Exception:
         pass
 
+
+
+def start_automatic_tunnel(port=5000):
+    print("⚡ Preparing Cloudflare Tunnel...")
+    
+    # This automatically finds or downloads the cloudflared executable file
+    # across Windows, Mac, or Linux systems.
+    cloudflared_cmd = [sys.executable, "-m", "pycloudflared", "tunnel", "--url", f"http://127.0.0.1:{port}"]
+    
+    process = subprocess.Popen(
+        cloudflared_cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1
+    )
+    
+    # Read the terminal output to extract the random URL
+    for _ in range(40): 
+        line = process.stdout.readline()
+        if not line:
+            break
+        # Search the logs for the .trycloudflare.com string
+        match = re.search(r"https://[a-zA-Z0-9-]+\.trycloudflare\.com", line)
+        if match:
+            print("\n" + "="*60)
+            print(f"🔗 PUBLIC HTTPS LINK: {match.group(0)}")
+            print("="*60 + "\n")
+            return process
+        time.sleep(0.2)
+        
+    print("⚠️ Tunnel started, check console logs for URL.")
+    return process
+
 if __name__ == '__main__':
+    # 1. Boot up the auto-downloading tunnel
+    tunnel_process = start_automatic_tunnel(port=5000)
+    
+    try:
+        # 2. Run your Flask app
+        threading.Timer(1.5, open_browser).start()
+        app.run(host='0.0.0.0', port=5000, debug=False)
+    finally:
+        # 3. Clean up when finished
+        print("\n🛑 Closing background tunnel...")
+        if 'tunnel_process' in locals():
+            tunnel_process.terminate()
+
+
+"""if __name__ == '__main__':
     # Listen on all network interfaces so other local devices can access the server
     threading.Timer(1.5, open_browser).start()
-    app.run(host='0.0.0.0', port=5000, debug=False)
+    app.run(host='0.0.0.0', port=5000, debug=False)"""
