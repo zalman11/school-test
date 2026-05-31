@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Safe Terminal Setup Wizard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: radial-gradient(circle at 10% 20%, rgb(18, 24, 38) 0%, rgb(11, 14, 23) 90%);
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+        }
+        .step-pill.active {
+            background-color: rgb(79 70 229);
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.5);
+        }
+    </style>
+</head>
+<body class="text-slate-200 min-h-screen flex items-center justify-center p-4">
+
+    <div class="max-w-xl w-full glass-panel rounded-3xl shadow-2xl p-6 md:p-10 space-y-8 animate-fade-in relative overflow-hidden">
+        <!-- Background light effect -->
+        <div class="absolute -top-32 -right-32 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl"></div>
+        <div class="absolute -bottom-32 -left-32 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl"></div>
+
+        <!-- Headings -->
+        <div class="text-center space-y-2 relative">
+            <div class="inline-flex w-12 h-12 bg-indigo-500/10 border border-indigo-500/25 rounded-2xl items-center justify-center text-indigo-400 mb-2">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                </svg>
+            </div>
+            <h1 class="text-2xl md:text-3xl font-extrabold text-white tracking-tight">Passport Safe Terminal</h1>
+            <p class="text-xs text-slate-400 uppercase tracking-widest font-semibold">Initial Onboarding Wizard</p>
+        </div>
+
+        <!-- Alerts -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="p-4 rounded-2xl text-xs font-semibold border {% if category == 'success' %} bg-emerald-950/30 text-emerald-300 border-emerald-500/20 {% else %} bg-rose-950/30 text-rose-300 border-rose-500/20 {% endif %} flex items-center gap-3">
+                        <span class="shrink-0 w-1.5 h-1.5 rounded-full {% if category == 'success' %} bg-emerald-400 {% else %} bg-rose-400 {% endif %}"></span>
+                        <span>{{ message }}</span>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Backup Detected Recovery Box -->
+        {% if backup_exists %}
+            <div class="p-5 border border-indigo-500/25 bg-indigo-950/20 rounded-2xl space-y-4">
+                <div class="flex items-start gap-3.5">
+                    <span class="p-2.5 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-xl shrink-0">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                        </svg>
+                    </span>
+                    <div class="text-xs space-y-1">
+                        <h4 class="font-bold text-white text-sm">📦 Compressed Backup Detected!</h4>
+                        <p class="text-slate-400 leading-relaxed">We found a compact database copy (<code>passport_tracker_backup.zip</code>). You can automatically restore all accounts, class structures, logs, and student rosters instantly.</p>
+                    </div>
+                </div>
+                <form method="POST" action="" class="m-0">
+                    <input type="hidden" name="restore" value="true">
+                    <button type="submit" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl transition shadow-lg hover:shadow-indigo-500/10 flex items-center justify-center gap-1.5">
+                        Restore Everything from Backup Archive
+                    </button>
+                </form>
+            </div>
+            <div class="relative flex py-2 items-center text-xs text-slate-500 justify-center">
+                <span class="border-t border-slate-800 flex-grow mr-3"></span>
+                <span>Or Setup Clean Terminal</span>
+                <span class="border-t border-slate-800 flex-grow ml-3"></span>
+            </div>
+        {% endif %}
+
+        <!-- Steps Progress Bar -->
+        <div class="flex items-center justify-between text-xs font-semibold px-4 border-b border-slate-800 pb-4">
+            <span id="step-lbl" class="text-indigo-400">Step 1 of 3: Security Credentials</span>
+            <div class="flex gap-1.5">
+                <span id="pill-1" class="step-pill active w-6 h-1.5 rounded-full bg-slate-800 transition"></span>
+                <span id="pill-2" class="step-pill w-6 h-1.5 rounded-full bg-slate-800 transition"></span>
+                <span id="pill-3" class="step-pill w-6 h-1.5 rounded-full bg-slate-800 transition"></span>
+            </div>
+        </div>
+
+        <!-- Custom Setup Form -->
+        <form method="POST" action="" id="setupForm" class="space-y-6">
+            <input type="hidden" name="restore" value="false">
+
+            <!-- STEP 1 PANE -->
+            <div id="step-pane-1" class="space-y-5">
+                <div class="space-y-1">
+                    <h3 class="font-bold text-white text-base">👤 Set Administrator Credentials</h3>
+                    <p class="text-xs text-slate-400">Establish the master administrator account. This profile retains control over backups and resets.</p>
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">IT Admin Username</label>
+                        <input type="text" name="username" placeholder="e.g. administrator" required
+                            class="w-full bg-slate-900/60 border border-slate-800 hover:border-slate-700 focus:border-indigo-500 focus:outline-none rounded-xl text-slate-200 text-xs px-4 py-3 transition">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Secure PIN / Password</label>
+                        <input type="password" name="password" id="pwd" placeholder="Enter secure password" required
+                            class="w-full bg-slate-900/60 border border-slate-800 hover:border-slate-700 focus:border-indigo-500 focus:outline-none rounded-xl text-slate-200 text-xs px-4 py-3 transition">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Confirm PIN / Password</label>
+                        <input type="password" id="confirm_pwd" placeholder="Re-enter password" required
+                            class="w-full bg-slate-900/60 border border-slate-800 hover:border-slate-700 focus:border-indigo-500 focus:outline-none rounded-xl text-slate-200 text-xs px-4 py-3 transition">
+                        <span id="pwd-mismatch" class="hidden text-[10px] text-rose-400 font-bold mt-1.5 block">⚠️ Passwords do not match!</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STEP 2 PANE -->
+            <div id="step-pane-2" class="hidden space-y-5">
+                <div class="space-y-1">
+                    <h3 class="font-bold text-white text-base">🏫 Grade Boundaries & System Scope</h3>
+                    <p class="text-xs text-slate-400">Define the academic parameters. Standard cohorts between these grades are generated automatically.</p>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Starting Grade Level</label>
+                        <input type="number" name="start_grade" value="8" min="1" max="20" required
+                            class="w-full bg-slate-900/60 border border-slate-800 focus:border-indigo-500 focus:outline-none rounded-xl text-slate-200 text-xs px-4 py-3 transition text-center">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Ending Grade Level</label>
+                        <input type="number" name="end_grade" value="12" min="1" max="20" required
+                            class="w-full bg-slate-900/60 border border-slate-800 focus:border-indigo-500 focus:outline-none rounded-xl text-slate-200 text-xs px-4 py-3 transition text-center">
+                    </div>
+                </div>
+                <div class="p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl flex gap-3 text-[11px] text-slate-400 leading-relaxed">
+                    <span class="w-1.5 h-1.5 bg-emerald-400 rounded-full shrink-0 mt-1"></span>
+                    <span>Class levels (e.g. Grade 8, Grade 9, Grade 10, Grade 11, Grade 12) will be dynamically initialized. Roster sheets can be bulk-uploaded inside these limits.</span>
+                </div>
+            </div>
+
+            <!-- STEP 3 PANE -->
+            <div id="step-pane-3" class="hidden space-y-5">
+                <div class="space-y-1">
+                    <h3 class="font-bold text-white text-base">⚙️ System Configuration Settings</h3>
+                    <p class="text-xs text-slate-400">Configure secondary options to control automated database protection and routing parameters.</p>
+                </div>
+                <div class="bg-slate-900/40 border border-slate-800 p-4 rounded-2xl space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div class="space-y-0.5 max-w-[80%]">
+                            <h4 class="text-xs font-bold text-white">Enable Auto-Backup Recovery</h4>
+                            <p class="text-[10px] text-slate-400 leading-relaxed">Recommended. Automatically backups student directories and teacher accounts in a secure zipped archive after every edit.</p>
+                        </div>
+                        <select name="auto_backup" class="bg-slate-900 border border-slate-700 text-slate-200 text-xs px-2.5 py-1.5 rounded-lg focus:outline-none focus:border-indigo-500">
+                            <option value="true" selected>Yes</option>
+                            <option value="false">No</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="text-center pt-2">
+                    <p class="text-[11px] text-indigo-400 font-bold">✨ You are ready to launch! Click complete to spin up your terminal.</p>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex items-center justify-between gap-4 pt-4 border-t border-slate-800">
+                <button type="button" id="prevBtn" onclick="nextStep(-1)" class="invisible px-5 py-2.5 border border-slate-800 hover:border-slate-700 rounded-xl text-slate-400 hover:text-white font-bold text-xs transition">
+                    Back
+                </button>
+                <button type="button" id="nextBtn" onclick="nextStep(1)" class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl transition shadow-lg shadow-indigo-500/10">
+                    Next Step
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        let currentStep = 1;
+        const totalSteps = 3;
+
+        function nextStep(n) {
+            // Validation on step 1 before proceeding
+            if (n === 1 && currentStep === 1) {
+                const username = document.querySelector('input[name="username"]').value.trim();
+                const pwd = document.getElementById('pwd').value;
+                const confirm_pwd = document.getElementById('confirm_pwd').value;
+                const mismatch = document.getElementById('pwd-mismatch');
+
+                if (!username || !pwd) {
+                    alert("Please fill in administrative credentials.");
+                    return;
+                }
+
+                if (pwd !== confirm_pwd) {
+                    mismatch.classList.remove('hidden');
+                    return;
+                } else {
+                    mismatch.classList.add('hidden');
+                }
+            }
+
+            // Hide active pane
+            document.getElementById(`step-pane-${currentStep}`).classList.add('hidden');
+            
+            // Adjust step index
+            currentStep += n;
+
+            if (currentStep > totalSteps) {
+                // Submit Form
+                document.getElementById('setupForm').submit();
+                return;
+            }
+
+            // Show new pane
+            document.getElementById(`step-pane-${currentStep}`).classList.remove('hidden');
+
+            // Update Progress bar pills
+            for (let i = 1; i <= totalSteps; i++) {
+                const pill = document.getElementById(`pill-${i}`);
+                if (i <= currentStep) {
+                    pill.classList.add('active');
+                } else {
+                    pill.classList.remove('active');
+                }
+            }
+
+            // Update Labels
+            const stepLbl = document.getElementById('step-lbl');
+            if (currentStep === 1) {
+                stepLbl.innerText = "Step 1 of 3: Security Credentials";
+                document.getElementById('prevBtn').classList.add('invisible');
+                document.getElementById('nextBtn').innerText = "Next Step";
+            } else if (currentStep === 2) {
+                stepLbl.innerText = "Step 2 of 3: Boundaries & Scope";
+                document.getElementById('prevBtn').classList.remove('invisible');
+                document.getElementById('nextBtn').innerText = "Next Step";
+            } else if (currentStep === 3) {
+                stepLbl.innerText = "Step 3 of 3: System Options";
+                document.getElementById('prevBtn').classList.remove('invisible');
+                document.getElementById('nextBtn').innerText = "Launch Terminal";
+            }
+        }
+    </script>
+</body>
+</html>

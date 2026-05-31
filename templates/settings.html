@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Settings Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- QR Code Generator Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        .settings-tab.active {
+            background-color: rgb(241 245 249);
+            color: rgb(79 70 229);
+            font-weight: 600;
+        }
+        /* Printable Target QR Badge Styles */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #printableQrLabelArea, #printableQrLabelArea * {
+                visibility: visible;
+            }
+            #printableQrLabelArea {
+                position: absolute;
+                left: 50%;
+                top: 30%;
+                transform: translate(-50%, -30%) scale(1.3);
+                display: flex !important;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body class="bg-[#f8fafc] text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Global Top Navbar -->
+    <nav class="bg-slate-900 border-b border-slate-800 shadow-sm px-6 py-4">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 bg-indigo-600/10 border border-indigo-500/20 text-indigo-400 rounded-lg flex items-center justify-center">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-white tracking-tight">Passport Safe Terminal</h1>
+                    <p class="text-[10px] text-slate-400 uppercase tracking-widest font-semibold">School Management System</p>
+                </div>
+            </div>
+            
+            <div class="flex flex-wrap items-center justify-center gap-3">
+                <span class="text-xs font-semibold text-slate-300 bg-slate-800/80 px-3 py-2 rounded-lg border border-slate-700/50 flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    Logged: <span class="text-indigo-400 font-bold">@{{ current_user.username }}</span>
+                </span>
+                <a href="{{ url_for('index') }}" class="text-xs font-semibold px-4 py-2 text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg transition">Terminal</a>
+                <a href="{{ url_for('dashboard') }}" class="text-xs font-semibold px-4 py-2 text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg transition">Dashboard</a>
+                {% if current_user.role == 'Admin' %}
+                    <a href="{{ url_for('settings') }}" class="text-xs font-semibold px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31c(2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                        Settings
+                    </a>
+                {% endif %}
+                <a href="{{ url_for('logout') }}" class="text-xs font-semibold px-4 py-2 border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 rounded-lg transition">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Workspace -->
+    <main class="flex-grow max-w-7xl w-full mx-auto p-4 md:p-8 space-y-6">
+        
+        <!-- Alerts & Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="p-4 rounded-xl flex items-center text-sm font-semibold border {% if category == 'success' %} bg-emerald-50 text-emerald-800 border-emerald-200 {% else %} bg-rose-50 text-rose-800 border-rose-200 {% endif %} shadow-sm animate-fade-in">
+                        <svg class="w-5 h-5 mr-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <span>{{ message }}</span>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Headings -->
+        <div>
+            <h2 class="text-2xl font-bold text-slate-900 tracking-tight">System Administration Control</h2>
+            <p class="text-xs text-slate-500 mt-1">Configure class schedules, split student cohorts, modify range boundaries, and manage employee accounts.</p>
+        </div>
+
+        <!-- Master Split Sidebar Design -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            
+            <!-- Left-side Navigation Column -->
+            <div class="lg:col-span-3 space-y-2">
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 mb-2">Workspace Modules</p>
+                
+                <button onclick="switchSettingsSection('grades-module', this)" class="settings-tab active w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-slate-600 hover:text-indigo-600 hover:bg-slate-100 transition text-sm text-left">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                    <span>Class & Grade Settings</span>
+                </button>
+
+                <button onclick="switchSettingsSection('splitter-module', this)" class="settings-tab w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-slate-600 hover:text-indigo-600 hover:bg-slate-100 transition text-sm text-left">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
+                    <span>Dynamic Cohort Splitter</span>
+                </button>
+
+                <button onclick="switchSettingsSection('rosters-module', this)" class="settings-tab w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-slate-600 hover:text-indigo-600 hover:bg-slate-100 transition text-sm text-left">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                    <span>Enrollment & Rosters</span>
+                </button>
+
+                <button onclick="switchSettingsSection('schedule-module', this)" class="settings-tab w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-slate-600 hover:text-indigo-600 hover:bg-slate-100 transition text-sm text-left">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    <span>Automation & Rollovers</span>
+                </button>
+
+                <button onclick="switchSettingsSection('staff-module', this)" class="settings-tab w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-slate-600 hover:text-indigo-600 hover:bg-slate-100 transition text-sm text-left">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                    <span>Staff Accounts</span>
+                </button>
+
+                <!-- Dedicated Sidebar Option for QR Code Configuration -->
+                <button onclick="switchSettingsSection('network-module', this)" id="networkTabButton" class="settings-tab w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-slate-600 hover:text-indigo-600 hover:bg-slate-100 transition text-sm text-left bg-indigo-50/10 border-l-2 border-indigo-500/30">
+                    <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h.01M16 12h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <span class="text-indigo-600 font-semibold">Safe QR Label Generator</span>
+                </button>
+
+                <button onclick="switchSettingsSection('database-module', this)" class="settings-tab w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-slate-600 hover:text-indigo-600 hover:bg-slate-100 transition text-sm text-left border-l-2 border-transparent">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.58 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.58 4 8 4s8-1.79 8-4M4 7c0-2.21 3.58-4 8-4s8 1.79 8 4m0 5c0 2.21-3.58 4-8 4s-8-1.79-8-4"></path></svg>
+                    <span>Database & Resets</span>
+                </button>
+            </div>
+
+            <!-- Right-side Form Workspace Area -->
+            <div class="lg:col-span-9 bg-white border border-slate-200/80 rounded-2xl shadow-sm p-6 md:p-8 min-h-[500px]">
+                
+                <!-- MODULE 1: CLASS CONFIGS & BOUNDS -->
+                <div id="grades-module" class="module-pane space-y-8">
+                    <div>
+                        <h3 class="text-base font-bold text-slate-950">🏫 Academic Boundary & Grade Setup</h3>
+                        <p class="text-xs text-slate-400 mt-1">Configure standard grade intervals and append custom track extensions.</p>
+                    </div>
+
+                    <!-- Bounds Setup -->
+                    <div class="bg-slate-50 border border-slate-100 p-5 rounded-xl space-y-4">
+                        <form method="POST" action="{{ url_for('update_bounds') }}" class="grid grid-cols-1 sm:grid-cols-12 gap-4 items-end">
+                            <div class="sm:col-span-5">
+                                <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">Starting Grade (First Year)</label>
+                                <input type="number" name="start_grade" value="{{ start_grade }}" required min="1" max="20"
+                                    class="w-full bg-white border border-slate-200 rounded-lg text-slate-800 text-xs px-3.5 py-2 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition">
+                            </div>
+                            <div class="sm:col-span-5">
+                                <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">Final Grade (Graduation Limit)</label>
+                                <input type="number" name="end_grade" value="{{ end_grade }}" required min="1" max="20"
+                                    class="w-full bg-white border border-slate-200 rounded-lg text-slate-800 text-xs px-3.5 py-2 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition">
+                            </div>
+                            <div class="sm:col-span-2">
+                                <button type="submit" class="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg text-xs transition">
+                                    Update
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Add Grade Track Suffix -->
+                    <div class="space-y-4">
+                        <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider">🛠 Add Custom Suffix Split (e.g. 9B, 10 Special Help)</h4>
+                        <form method="POST" action="{{ url_for('add_grade') }}" class="grid grid-cols-1 sm:grid-cols-12 gap-4 items-end">
+                            <div class="sm:col-span-4">
+                                <label class="block text-[11px] font-bold text-slate-400 uppercase mb-1.5">Numeric Target Grade</label>
+                                <input type="number" name="level" placeholder="e.g. 9" required min="{{ start_grade }}" max="{{ end_grade }}"
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-lg text-slate-800 text-xs px-3.5 py-2 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition">
+                            </div>
+                            <div class="sm:col-span-5">
+                                <label class="block text-[11px] font-bold text-slate-400 uppercase mb-1.5">Suffix Identifier / Suffix Text</label>
+                                <input type="text" name="track" placeholder="e.g. Special Support" required maxlength="40"
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-lg text-slate-800 text-xs px-3.5 py-2 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition">
+                            </div>
+                            <div class="sm:col-span-3">
+                                <button type="submit" class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-xs transition shadow-sm">
+                                    Create Track
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Active Directory Listing Grid -->
+                    <div class="space-y-3 pt-2">
+                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Active Grades Directory</label>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-64 overflow-y-auto pr-1">
+                            {% if grade_configs %}
+                                {% for cfg in grade_configs %}
+                                <div class="flex items-center justify-between p-3.5 bg-slate-50 border border-slate-100 rounded-xl text-xs transition hover:bg-slate-100/50">
+                                    <div>
+                                        <p class="font-bold text-slate-800">Grade {{ cfg.level }}{{ cfg.track }}</p>
+                                        {% if cfg.custom_display_name %}
+                                            <p class="text-[10px] text-slate-400 font-medium">Alias: <span class="text-indigo-600 font-semibold">{{ cfg.custom_display_name }}</span></p>
+                                        {% endif %}
+                                    </div>
+                                    <div class="flex items-center space-x-3.5">
+                                        <button type="button" onclick="openRenameModal('{{ cfg.id }}', '{{ cfg.display_name }}')" class="text-[11px] text-indigo-600 hover:text-indigo-800 font-bold">
+                                            Rename
+                                        </button>
+                                        <form method="POST" action="{{ url_for('delete_grade', grade_id=cfg.id) }}" class="m-0 p-0">
+                                            <button type="submit" onclick="return confirm('Remove class structure?');" class="text-slate-400 hover:text-rose-500 p-1 rounded-lg hover:bg-rose-50 transition">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="col-span-2 text-center text-slate-400 py-6 text-xs border border-dashed rounded-xl">No grades configured.</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MODULE 2: DYNAMIC CLASS SPLITTER -->
+                <div id="splitter-module" class="module-pane hidden space-y-6">
+                    <div>
+                        <h3 class="text-base font-bold text-slate-950">⚡ Dynamic Cohort Splitter Tool</h3>
+                        <p class="text-xs text-slate-400 mt-1">Split students from one class cohort and move them into a specific custom support tier or specialized help group.</p>
+                    </div>
+
+                    <form method="POST" action="{{ url_for('split_class') }}" class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">Source Cohort</label>
+                                <select id="splitterSourceGrade" name="source_grade" onchange="loadSplitterStudents()" required 
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-lg text-slate-800 text-xs px-3 py-2.5 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition">
+                                    <option value="" disabled selected>-- Choose Source Cohort --</option>
+                                    {% for cfg in grade_configs %}
+                                        <option value="{{ cfg.display_name }}">{{ cfg.display_name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">New Target Suffix (e.g. B, C, or Special Support)</label>
+                                <input type="text" name="dest_track" placeholder="e.g. Special Support B" required
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-lg text-slate-800 text-xs px-3 py-2.5 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition">
+                            </div>
+                        </div>
+
+                        <!-- Checkbox Box Container -->
+                        <div class="border border-slate-200/80 rounded-xl overflow-hidden shadow-sm">
+                            <div class="bg-slate-50 px-4 py-2 border-b border-slate-200 flex items-center justify-between text-xs">
+                                <span class="font-bold text-slate-500">Selected Students to Move</span>
+                                <div class="space-x-3 font-semibold text-indigo-600">
+                                    <button type="button" onclick="selectAllSplitter(true)" class="hover:underline">Select All</button>
+                                    <span class="text-slate-300">|</span>
+                                    <button type="button" onclick="selectAllSplitter(false)" class="text-slate-400 hover:underline">Clear All</button>
+                                </div>
+                            </div>
+                            <div id="splitterStudentList" class="p-3 max-h-56 overflow-y-auto space-y-1.5 text-xs">
+                                <p class="text-slate-400 font-medium text-center py-6">Select a source class cohort above to parse student lists...</p>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg text-xs transition shadow-sm">
+                            Execute Cohort Segment Split
+                        </button>
+                    </form>
+                </div>
+
+                <!-- MODULE 3: ENROLLMENT & ROSTERS -->
+                <div id="rosters-module" class="module-pane hidden space-y-8">
+                    <div>
+                        <h3 class="text-base font-bold text-slate-950">👥 Student Directories & Import Channels</h3>
+                        <p class="text-xs text-slate-400 mt-1">Enroll lists of students at once or modify existing records.</p>
+                    </div>
+
+                    <!-- Tabbed directory filters -->
+                    <div class="border-b border-slate-200 flex space-x-4">
+                        <button type="button" id="enroll-tab-btn" onclick="switchEnrollView('enroll-pane')" class="border-indigo-500 text-indigo-600 border-b-2 py-2 px-1 text-xs font-bold">
+                            📥 Pasteboard Bulk Import
+                        </button>
+                        <button type="button" id="active-tab-btn" onclick="switchEnrollView('active-pane')" class="border-transparent text-slate-400 hover:text-slate-600 border-b-2 py-2 px-1 text-xs font-bold">
+                            📋 Active Directory ({{ students | length }})
+                        </button>
+                        <button type="button" id="grad-tab-btn" onclick="switchEnrollView('grad-pane')" class="border-transparent text-slate-400 hover:text-slate-600 border-b-2 py-2 px-1 text-xs font-bold">
+                            🎓 Graduated Alumni ({{ graduates | length }})
+                        </button>
+                    </div>
+
+                    <div class="enroll-subpane-content">
+                        <!-- Pane A: Bulk Import Form -->
+                        <div id="enroll-pane" class="enroll-subpane space-y-4">
+                            <form method="POST" action="{{ url_for('bulk_enroll') }}" class="space-y-4">
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">Destination Grade Level</label>
+                                    <select name="grade" required class="w-full bg-slate-50 border border-slate-200 rounded-lg text-slate-800 text-xs px-3 py-2.5 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition">
+                                        <option value="" disabled selected>-- Select Target Grade --</option>
+                                        {% for cfg in grade_configs %}
+                                            <option value="{{ cfg.display_name }}">{{ cfg.display_name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">Paste Names (One Student Name per row)</label>
+                                    <textarea name="names_list" rows="6" placeholder="Benjamin Carter&#10;Charlotte Diaz&#10;Elijah Jenkins" required
+                                        class="w-full bg-slate-50 border border-slate-200 rounded-lg text-slate-800 text-xs p-3.5 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition font-mono"></textarea>
+                                </div>
+                                <button type="submit" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs transition">
+                                    Launch Bulk Enroller
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- Pane B: Active Directory Accordion / Dropdowns -->
+                        <div id="active-pane" class="enroll-subpane hidden space-y-3 max-h-[500px] overflow-y-auto pr-1">
+                            {% if students %}
+                                {% set configured_grade_names = grade_configs | map(attribute='display_name') | list %}
+                                
+                                {% for cfg in grade_configs %}
+                                    {% set class_students = students | selectattr("grade", "equalto", cfg.display_name) | list %}
+                                    {% set student_count = class_students | length %}
+                                    
+                                    <div class="border border-slate-200/70 rounded-xl overflow-hidden shadow-sm bg-white">
+                                        <!-- Header Button -->
+                                        <button type="button" onclick="toggleActiveGradeDropdown('grade-list-{{ cfg.id }}', this)" 
+                                            class="w-full flex items-center justify-between px-4 py-3 bg-slate-50 hover:bg-slate-100/80 transition text-slate-800 font-semibold text-xs text-left">
+                                            <div class="flex items-center space-x-2">
+                                                <span class="font-bold text-slate-700">
+                                                    Grade {{ cfg.level }}{{ cfg.track }}
+                                                </span>
+                                                {% if cfg.custom_display_name %}
+                                                    <span class="text-slate-400 font-normal">({{ cfg.custom_display_name }})</span>
+                                                {% endif %}
+                                            </div>
+                                            <div class="flex items-center space-x-2">
+                                                <span class="bg-indigo-50 text-indigo-700 px-2.5 py-0.5 rounded-full font-bold text-[10px]">{{ student_count }} student{{ 's' if student_count != 1 else '' }}</span>
+                                                <svg class="w-4 h-4 transform transition-transform duration-200 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                                </svg>
+                                            </div>
+                                        </button>
+                                        
+                                        <!-- List Content -->
+                                        <div id="grade-list-{{ cfg.id }}" class="hidden divide-y divide-slate-100 max-h-60 overflow-y-auto border-t border-slate-150 bg-white">
+                                            {% if student_count > 0 %}
+                                                <table class="w-full text-left border-collapse text-xs">
+                                                    <tbody class="divide-y divide-slate-100">
+                                                        {% for student in class_students %}
+                                                        <tr class="hover:bg-slate-50/50">
+                                                            <td class="py-2 px-4 font-semibold text-slate-800 w-2/3">{{ student.name }}</td>
+                                                            <td class="py-2 px-4 text-center w-1/3">
+                                                                <form method="POST" action="{{ url_for('remove_student', student_id=student.id) }}" class="inline">
+                                                                    <button type="submit" onclick="return confirm('Erase student completely?');" class="text-slate-400 hover:text-rose-500 p-1 hover:bg-rose-50 rounded-md transition">
+                                                                        <svg class="w-4 h-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                                                    </button>
+                                                                </form>
+                                                            </td>
+                                                        </tr>
+                                                        {% endfor %}
+                                                    </tbody>
+                                                </table>
+                                            {% else %}
+                                                <div class="py-4 px-4 text-center text-slate-400 italic text-[11px]">No students enrolled in this class.</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                {% endfor %}
+
+                                <!-- Fallback Category for Unassigned / Legacy Class Tiers -->
+                                {% set ns_unassigned = namespace(students=[]) %}
+                                {% for student in students %}
+                                    {% if student.grade not in configured_grade_names and student.grade != 'Graduated' %}
+                                        {% set ns_unassigned.students = ns_unassigned.students + [student] %}
+                                    {% endif %}
+                                {% endfor %}
+                                
+                                {% if ns_unassigned.students | length > 0 %}
+                                    <div class="border border-slate-200/70 rounded-xl overflow-hidden shadow-sm bg-white">
+                                        <!-- Header Button -->
+                                        <button type="button" onclick="toggleActiveGradeDropdown('grade-list-unassigned', this)" 
+                                            class="w-full flex items-center justify-between px-4 py-3 bg-amber-50/50 hover:bg-amber-100/30 transition text-slate-800 font-semibold text-xs text-left">
+                                            <div class="flex items-center space-x-2">
+                                                <span class="font-bold text-amber-850">
+                                                    ⚠️ Legacy & Unassigned Grades
+                                                </span>
+                                            </div>
+                                            <div class="flex items-center space-x-2">
+                                                <span class="bg-amber-100 text-amber-800 px-2.5 py-0.5 rounded-full font-bold text-[10px]">{{ ns_unassigned.students | length }} student{{ 's' if (ns_unassigned.students | length) != 1 else '' }}</span>
+                                                <svg class="w-4 h-4 transform transition-transform duration-200 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                                </svg>
+                                            </div>
+                                        </button>
+                                        
+                                        <!-- List Content -->
+                                        <div id="grade-list-unassigned" class="hidden divide-y divide-slate-100 max-h-60 overflow-y-auto border-t border-slate-150 bg-white">
+                                            <table class="w-full text-left border-collapse text-xs">
+                                                <tbody class="divide-y divide-slate-100">
+                                                    {% for student in ns_unassigned.students %}
+                                                    <tr class="hover:bg-slate-50/50">
+                                                        <td class="py-2 px-4 font-semibold text-slate-800 w-2/3">
+                                                            <div>
+                                                                <p>{{ student.name }}</p>
+                                                                <p class="text-[9px] text-amber-600 font-semibold">Current Value: {{ student.grade }}</p>
+                                                            </div>
+                                                        </td>
+                                                        <td class="py-2 px-4 text-center w-1/3">
+                                                            <form method="POST" action="{{ url_for('remove_student', student_id=student.id) }}" class="inline">
+                                                                <button type="submit" onclick="return confirm('Erase student completely?');" class="text-slate-400 hover:text-rose-500 p-1 hover:bg-rose-50 rounded-md transition">
+                                                                    <svg class="w-4 h-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                                                </button>
+                                                            </form>
+                                                        </td>
+                                                    </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            {% else %}
+                                <div class="text-center text-slate-400 py-10 text-xs border border-dashed border-slate-200 rounded-xl">
+                                    No enrolled active student profiles found.
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Pane C: Graduated Alumni Table -->
+                        <div id="grad-pane" class="enroll-subpane hidden">
+                            <div class="border border-slate-200/80 rounded-xl overflow-hidden shadow-sm max-h-96 overflow-y-auto">
+                                <table class="w-full text-left border-collapse text-xs">
+                                    <thead class="bg-slate-50 text-slate-400 font-bold uppercase sticky top-0 border-b">
+                                        <tr>
+                                            <th class="py-2.5 px-4">Graduate Identity</th>
+                                            <th class="py-2.5 px-4">Graduation Year</th>
+                                            <th class="py-2.5 px-4">Registry State</th>
+                                            <th class="py-2.5 px-4 text-center">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-100 bg-amber-50/5">
+                                        {% if graduates %}
+                                            {% for grad in graduates %}
+                                            <tr class="hover:bg-amber-50/20">
+                                                <td class="py-2.5 px-4 font-semibold text-slate-800">{{ grad.name }}</td>
+                                                <td class="py-2.5 px-4 font-bold text-indigo-650">
+                                                    {% if grad.graduation_year %}
+                                                        Class of {{ grad.graduation_year }}
+                                                    {% else %}
+                                                        <span class="text-slate-400 font-normal">N/A</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td class="py-2.5 px-4">
+                                                    <span class="bg-amber-100 text-amber-800 px-2.5 py-0.5 rounded font-bold text-[10px]">Alumni Graduate</span>
+                                                </td>
+                                                <td class="py-2.5 px-4 text-center">
+                                                    <form method="POST" action="{{ url_for('remove_student', student_id=grad.id) }}" class="inline">
+                                                        <button type="submit" onclick="return confirm('Erase graduate history record permanently?');" class="text-slate-400 hover:text-rose-500 p-1 hover:bg-rose-50 rounded-md transition">
+                                                            <svg class="w-4 h-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                                        </button>
+                                                    </form>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        {% else %}
+                                            <tr><td colspan="4" class="text-center text-slate-400 py-6">No graduated student logs detected in database.</td></tr>
+                                        {% endif %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MODULE 4: AUTOMATION & SCHEDULERS -->
+                <div id="schedule-module" class="module-pane hidden space-y-8">
+                    <div>
+                        <h3 class="text-base font-bold text-slate-950">📆 Automation Calendar & Timelines</h3>
+                        <p class="text-xs text-slate-400 mt-1">Configure automated school-year rollover dates or execute a quick manual rollover snapshot.</p>
+                    </div>
+
+                    <!-- Automatic date schedulers -->
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider">Scheduled Rollovers</h4>
+                            <button type="button" onclick="document.getElementById('addScheduleForm').classList.toggle('hidden')" 
+                                class="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition">
+                                + Schedule Rollover
+                            </button>
+                        </div>
+
+                        <!-- Schedule creation input field inside the card -->
+                        <form id="addScheduleForm" method="POST" action="{{ url_for('add_schedule') }}" class="hidden p-4 bg-slate-50 border border-slate-100 rounded-xl space-y-4">
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Rollover Label</label>
+                                <input type="text" name="label" placeholder="e.g. End of Semester 2026" required
+                                    class="w-full bg-white border border-slate-200 rounded-lg text-xs px-3 py-2 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Target Date</label>
+                                    <input type="date" name="target_date" required
+                                        class="w-full bg-white border border-slate-200 rounded-lg text-xs px-3 py-2 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Recurrence Cycle</label>
+                                    <select name="recurrence" class="w-full bg-white border border-slate-200 rounded-lg text-xs px-3 py-2 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                                        <option value="once">Just once</option>
+                                        <option value="yearly">Yearly (Recurring)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <button type="submit" class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-xs transition">
+                                Confirm Scheduled Rollover Action
+                            </button>
+                        </form>
+
+                        <!-- Timeline schedule items -->
+                        <div class="space-y-3">
+                            {% if scheduled_rollovers %}
+                                {% for task in scheduled_rollovers %}
+                                <div class="flex items-center justify-between p-4 bg-slate-50 border border-slate-100 rounded-xl text-xs">
+                                    <div class="space-y-0.5">
+                                        <p class="font-bold text-slate-800">{{ task.label }}</p>
+                                        <p class="text-[10px] text-slate-400 font-medium">
+                                            📅 Scheduled on: <span class="font-semibold text-slate-600">{{ task.target_date.strftime('%B %d, %Y') }}</span> &middot; 
+                                            Cycle: <span class="capitalize text-indigo-600 font-bold">{{ task.recurrence }}</span>
+                                        </p>
+                                    </div>
+                                    <form method="POST" action="{{ url_for('delete_schedule', schedule_id=task.id) }}">
+                                        <button type="submit" onclick="return confirm('Cancel this automatic rollover task?');" class="text-slate-400 hover:text-rose-500 p-1.5 hover:bg-rose-50 rounded-lg transition">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                        </button>
+                                    </form>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="text-center text-slate-400 py-6 text-xs border border-dashed rounded-xl">No automatic rollover dates configured.</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Instant Manual Trigger -->
+                    <div class="border border-rose-500/20 bg-rose-50/30 p-5 rounded-2xl space-y-4">
+                        <div>
+                            <h4 class="text-xs font-bold text-rose-800 uppercase tracking-wider">⚡ Immediate Forced Year Rollover</h4>
+                            <p class="text-[11px] text-rose-700/80 leading-relaxed mt-1">Executing a manual rollover instantly captures historical records and advances all active students (e.g. Grade 9 → Grade 10). Class levels above Grade {{ end_grade }} will automatically graduate.</p>
+                        </div>
+                        <form method="POST" action="{{ url_for('advance_year') }}" class="grid grid-cols-1 sm:grid-cols-12 gap-4 items-end">
+                            <div class="sm:col-span-9">
+                                <label class="block text-[10px] font-bold text-rose-700 uppercase mb-1.5">Historical Term Label (for archives)</label>
+                                <input type="text" name="archive_label" placeholder="e.g. Semester 2 Manual Check" required
+                                    class="w-full bg-white border border-rose-200 rounded-lg text-slate-800 text-xs px-3.5 py-2 focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 focus:outline-none transition">
+                            </div>
+                            <div class="sm:col-span-3">
+                                <button type="submit" onclick="return confirm('Forcing an instant rollover will increment active students and graduate seniors. Continue?');"
+                                    class="w-full py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-lg text-xs transition shadow-sm">
+                                    Force Rollover
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- MODULE 5: STAFF ACCESS -->
+                <div id="staff-module" class="module-pane hidden space-y-8">
+                    <div>
+                        <h3 class="text-base font-bold text-slate-950">👤 Staff Credentials & Directories</h3>
+                        <p class="text-xs text-slate-400 mt-1">Provision staff log in accounts or modify administrative access credentials.</p>
+                    </div>
+
+                    <!-- Authorization credentials -->
+                    <div class="bg-slate-50 border border-slate-100 p-5 rounded-xl space-y-4">
+                        <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider">Add New Officer Account</h4>
+                        <form method="POST" action="{{ url_for('add_teacher') }}" class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+                            <div class="md:col-span-4">
+                                <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">Staff Username</label>
+                                <input type="text" name="username" placeholder="Username" required autocomplete="off"
+                                    class="w-full bg-white border border-slate-200 rounded-lg text-slate-800 text-xs px-3.5 py-2 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition">
+                            </div>
+                            <div class="md:col-span-4">
+                                <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">Security PIN Code</label>
+                                <input type="password" name="password" placeholder="••••••••" required
+                                    class="w-full bg-white border border-slate-200 rounded-lg text-slate-800 text-xs px-3.5 py-2 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition">
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">Authority Role</label>
+                                <select name="role" class="w-full bg-white border border-slate-200 rounded-lg text-slate-800 text-xs px-3.5 py-2 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition">
+                                    <option value="Teacher" selected>Teacher</option>
+                                    <option value="Admin">Administrator</option>
+                                </select>
+                            </div>
+                            <div class="md:col-span-2">
+                                <button type="submit" class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-xs transition shadow-sm">
+                                    Create
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Staff directories -->
+                    <div class="space-y-3">
+                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Active Staff Directory</label>
+                        <div class="border border-slate-200/80 rounded-xl overflow-hidden shadow-sm">
+                            <table class="w-full text-left border-collapse text-xs align-middle">
+                                <thead class="bg-slate-50 text-slate-400 font-bold uppercase border-b">
+                                    <tr>
+                                        <th class="py-2.5 px-4">User Account</th>
+                                        <th class="py-2.5 px-4">Account Rank</th>
+                                        <th class="py-2.5 px-4 text-center">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100">
+                                    {% if teachers %}
+                                        {% for teacher in teachers %}
+                                        <tr class="hover:bg-slate-50/50">
+                                            <td class="py-2.5 px-4 font-bold text-slate-800">@{{ teacher.username }}</td>
+                                            <td class="py-2.5 px-4">
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold {{ 'bg-amber-50 text-amber-700 border border-amber-200/30' if teacher.role == 'Admin' else 'bg-slate-100 text-slate-700 border' }}">
+                                                    {{ teacher.role }}
+                                                </span>
+                                            </td>
+                                            <td class="py-2.5 px-4 text-center">
+                                                <form method="POST" action="{{ url_for('delete_user', user_id=teacher.id) }}" class="inline">
+                                                    <button type="submit" onclick="return confirm('Revoke staff account privileges?');" class="text-slate-400 hover:text-rose-500 p-1 hover:bg-rose-50 rounded-md transition">
+                                                        <svg class="w-4 h-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    {% else %}
+                                        <tr><td colspan="3" class="text-center text-slate-400 py-6">No other staff members configured.</td></tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MODULE 6: SAFE QR LABEL & NETWORK CONFIGURATION MODULE -->
+                <div id="network-module" class="module-pane hidden space-y-6">
+                    <div class="border-b border-slate-150 pb-4">
+                        <h3 class="text-base font-bold text-slate-950">📡 Local Network IP & Safe QR Label Setup</h3>
+                        <p class="text-xs text-slate-400 mt-1">Configure your local server and print custom QR labels for teachers.</p>
+                    </div>
+
+                    <!-- Dynamic Auto-Discovery Greeting Badge -->
+                    <div id="autoDiscoveryNotice" class="p-4 bg-emerald-50 border border-emerald-100 rounded-xl flex items-start gap-3.5 text-xs">
+                        <span class="p-2 bg-emerald-100 text-emerald-800 rounded-lg shrink-0 mt-0.5">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        </span>
+                        <div>
+                            <p class="font-bold text-emerald-950">✨ Live Local Routing Active</p>
+                            <p class="text-emerald-800/90 leading-relaxed mt-0.5">
+                                We detected you are modifying settings locally. The print-ready QR card below has automatically configured itself to target your network hostname <strong>"{{ hostname }}.local"</strong>. Just hit print!
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Setup Explainer Cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="border border-indigo-100 bg-indigo-50/25 p-4 rounded-xl text-xs space-y-2">
+                            <h4 class="font-bold text-indigo-950 flex items-center gap-1.5">
+                                <span class="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-pulse"></span>
+                                Option 1: Friendly mDNS Hostname (Recommended)
+                            </h4>
+                            <p class="text-slate-600 leading-relaxed">
+                                Most modern local networks support mDNS. Teachers can type your host computer's hostname in their browsers instead of an IP address. This friendly hostname <strong>remains permanent</strong> even if your router assigns the machine a brand-new IP.
+                            </p>
+                            <p class="font-mono bg-indigo-50 p-2 rounded text-[11px] text-indigo-700">
+                                http://<span class="font-bold">{{ hostname }}.local</span>:5000
+                            </p>
+                        </div>
+
+                        <div class="border border-emerald-100 bg-emerald-50/20 p-4 rounded-xl text-xs space-y-2">
+                            <h4 class="font-bold text-emerald-950 flex items-center gap-1.5">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                Option 2: Local Static IP (Alternative)
+                            </h4>
+                            <p class="text-slate-600 leading-relaxed">
+                                To prevent your router from changing the host computer's IP address on startup, set a **Static IP Reservation** in your school router's settings, or assign a manual IP under Windows network properties.
+                            </p>
+                            <p class="font-mono bg-emerald-50 p-2 rounded text-[11px] text-emerald-700">
+                                Current network IP: <span class="font-bold">http://{{ local_ip }}:5000</span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- QR Generator Sandbox -->
+                    <div class="border border-slate-250/60 rounded-xl p-5 bg-slate-50/40 grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+                        <div class="md:col-span-8 space-y-4">
+                            <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider">Configure QR Address Label</h4>
+                            
+                            <div class="space-y-3">
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Target Address URL</label>
+                                    <input type="text" id="qrTargetUrlInput" oninput="regenerateQrCodeFromInput()" 
+                                           class="w-full bg-white border border-slate-200 rounded-lg text-xs px-3.5 py-2.5 font-mono focus:ring-1 focus:ring-indigo-500 focus:outline-none transition">
+                                </div>
+                                
+                                <div class="flex flex-wrap gap-2 text-[10px]">
+                                    <button type="button" onclick="setQrUrlPreset('http://{{ hostname.lower() }}.local:5000')" class="px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded font-semibold transition">Use mDNS Preset</button>
+                                    <button type="button" onclick="setQrUrlPreset('http://{{ local_ip }}:5000')" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded font-semibold transition">Use Current IP Preset</button>
+                                </div>
+                            </div>
+
+                            <button type="button" onclick="window.print()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg text-xs transition flex items-center gap-1.5 shadow-sm">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                                Print Safe QR Label Card
+                            </button>
+                        </div>
+
+                        <!-- Live Label Card Preview -->
+                        <div class="md:col-span-4 flex justify-center">
+                            <div id="printableQrLabelArea" class="border border-slate-200 bg-white p-5 rounded-2xl shadow-md text-center max-w-[210px] space-y-3.5 flex flex-col items-center">
+                                <div class="text-[10px] font-bold text-indigo-600 uppercase tracking-widest border-b pb-1 px-2 border-indigo-100 w-full text-center">Passport Safe Terminal</div>
+                                
+                                <!-- Canvas drawn by QRious -->
+                                <canvas id="qrCodeCanvas"></canvas>
+                                
+                                <div class="space-y-0.5 w-full text-center">
+                                    <p class="text-[9px] font-extrabold text-slate-800">SCAN TO SIGN OUT PASSPORT</p>
+                                    <p id="qrLabelAddressText" class="text-[8px] font-mono text-slate-400 break-all w-full text-center select-none">http://localhost:5000</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MODULE 7: DATABASE & SYSTEM RESETS -->
+                <div id="database-module" class="module-pane hidden space-y-8">
+                    <div>
+                        <h3 class="text-base font-bold text-slate-950">⚙️ Database Recovery & System Resets</h3>
+                        <p class="text-xs text-slate-400 mt-1">Configure automated database backups, restore previous snapshots, or wipe specific system components.</p>
+                    </div>
+
+                    <!-- Auto-Backup Configuration -->
+                    <div class="border border-slate-200 rounded-xl p-5 bg-slate-50/30 space-y-5">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider">Auto-Backup System</h4>
+                                <p class="text-[11px] text-slate-500 leading-relaxed mt-0.5">When enabled, student lists and staff accounts are backed up in a secure compressed file (<code>passport_tracker_backup.zip</code>). In case of database wipe/accidental delete, your system automatically restores your configuration.</p>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <span class="text-xs font-bold {% if auto_backup_enabled == 'true' %} text-emerald-600 {% else %} text-slate-400 {% endif %}">
+                                    {% if auto_backup_enabled == 'true' %} Enabled {% else %} Disabled {% endif %}
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Auto-Backup Toggle Form -->
+                        <form method="POST" action="{{ url_for('update_backup_config') }}" class="flex items-center justify-between border-t border-slate-100 pt-4">
+                            <span class="text-xs text-slate-600">Toggle Auto-Backup Feature:</span>
+                            <div class="flex items-center space-x-3">
+                                <select name="auto_backup_enabled" class="bg-white border border-slate-200 rounded-lg text-xs px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                                    <option value="true" {% if auto_backup_enabled == 'true' %} selected {% endif %}>Enable Auto-Backup (Recommended)</option>
+                                    <option value="false" {% if auto_backup_enabled == 'false' %} selected {% endif %}>Disable Auto-Backup</option>
+                                </select>
+                                <button type="submit" class="py-1.5 px-4 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg text-xs transition shadow-sm">
+                                    Save Config
+                                </button>
+                            </div>
+                        </form>
+
+                        <!-- Manual Backup / Restore Actions -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
+                            <div class="bg-white border border-slate-100 p-4 rounded-xl space-y-2 flex flex-col justify-between">
+                                <div>
+                                    <h5 class="text-xs font-bold text-slate-700">Save Snapshot Now</h5>
+                                    <p class="text-[10px] text-slate-400">Save a fresh database copy of all student files and teacher details right now.</p>
+                                </div>
+                                <form method="POST" action="{{ url_for('manual_backup') }}" class="m-0 pt-2">
+                                    <button type="submit" class="w-full py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-lg text-xs transition">
+                                        Trigger Manual Backup
+                                    </button>
+                                </form>
+                            </div>
+
+                            <div class="bg-white border border-slate-100 p-4 rounded-xl space-y-2 flex flex-col justify-between">
+                                <div>
+                                    <h5 class="text-xs font-bold text-slate-700">Restore Safe Backup</h5>
+                                    <p class="text-[10px] text-slate-400">Load accounts and student data from your saved backup file. This replaces current data.</p>
+                                </div>
+                                <form method="POST" action="{{ url_for('manual_restore') }}" class="m-0 pt-2">
+                                    <button type="submit" onclick="return confirm('WARNING: Restoring will overwrite all current student rosters and staff accounts. Proceed?');"
+                                            class="w-full py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold rounded-lg text-xs transition">
+                                        Restore Data Now
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- Backup File Info -->
+                        {% if backup_exists %}
+                            <div class="text-[10px] text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-lg p-2.5 flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+                                <span>A compact backup snapshot exists in your system folder (<code>passport_tracker_backup.zip</code>) along with historical copies in your <code>backups/</code> directory.</span>
+                            </div>
+                        {% else %}
+                            <div class="text-[10px] text-amber-600 bg-amber-50 border border-amber-100 rounded-lg p-2.5 flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-amber-500 shrink-0"></span>
+                                <span>No backup file detected. Trigger a manual backup or enable auto-backup to secure your data.</span>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Wipes & Resets Section -->
+                    <div class="space-y-4">
+                        <h4 class="text-xs font-bold text-rose-800 uppercase tracking-wider border-b border-rose-100 pb-2">⚠️ System Purges & Destructive Resets</h4>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <!-- Reset Active Students -->
+                            <div class="border border-slate-200 rounded-xl p-4 bg-white hover:border-rose-250 transition space-y-3 flex flex-col justify-between">
+                                <div class="space-y-1">
+                                    <h5 class="text-xs font-bold text-slate-800">Clear Active Students</h5>
+                                    <p class="text-[10px] text-slate-400 leading-relaxed">Permanently deletes all active students in the registry. Excludes graduated alumni profiles.</p>
+                                </div>
+                                <form method="POST" action="{{ url_for('reset_students') }}" class="m-0 pt-2">
+                                    <button type="submit" onclick="return confirm('DANGER: This will permanently delete ALL active students! Are you absolutely sure?');"
+                                            class="w-full py-2 border border-rose-500 text-rose-600 hover:bg-rose-50 font-bold rounded-lg text-xs transition">
+                                        Reset Students
+                                    </button>
+                                </form>
+                            </div>
+
+                            <!-- Reset Graduates -->
+                            <div class="border border-slate-200 rounded-xl p-4 bg-white hover:border-rose-250 transition space-y-3 flex flex-col justify-between">
+                                <div class="space-y-1">
+                                    <h5 class="text-xs font-bold text-slate-800">Clear Alumni Registry</h5>
+                                    <p class="text-[10px] text-slate-400 leading-relaxed">Permanently deletes all historical records of graduated students.</p>
+                                </div>
+                                <form method="POST" action="{{ url_for('reset_graduates') }}" class="m-0 pt-2">
+                                    <button type="submit" onclick="return confirm('DANGER: This will permanently delete ALL graduated student profiles! Are you absolutely sure?');"
+                                            class="w-full py-2 border border-rose-500 text-rose-600 hover:bg-rose-50 font-bold rounded-lg text-xs transition">
+                                        Reset Graduates
+                                    </button>
+                                </form>
+                            </div>
+
+                            <!-- Reset Logs -->
+                            <div class="border border-slate-200 rounded-xl p-4 bg-white hover:border-rose-250 transition space-y-3 flex flex-col justify-between">
+                                <div class="space-y-1">
+                                    <h5 class="text-xs font-bold text-slate-800">Clear Transaction Logs</h5>
+                                    <p class="text-[10px] text-slate-400 leading-relaxed">Wipes all audit trails and movement timestamps from the main logs index.</p>
+                                </div>
+                                <form method="POST" action="{{ url_for('reset_logs') }}" class="m-0 pt-2">
+                                    <button type="submit" onclick="return confirm('DANGER: This will permanently delete ALL transaction history logs! Are you sure?');"
+                                            class="w-full py-2 border border-rose-500 text-rose-600 hover:bg-rose-50 font-bold rounded-lg text-xs transition">
+                                        Reset Logs
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- Full Factory Reset -->
+                        <div class="border border-rose-500/25 bg-rose-50/30 p-5 rounded-xl space-y-3 pt-4 mt-6">
+                            <div>
+                                <h4 class="text-xs font-bold text-rose-800 uppercase tracking-wider">☢️ Full System Factory Reset</h4>
+                                <p class="text-[11px] text-rose-700 leading-relaxed mt-1">This action completely deletes the <code>passport_tracker.db</code> file and initializes a fresh database configuration. All configurations, logs, users, grades, and rosters will be permanently lost. You will be automatically redirected to the Setup Wizard to initialize a new custom admin username and password.</p>
+                            </div>
+                            <form method="POST" action="{{ url_for('factory_reset') }}" class="m-0 pt-1">
+                                <button type="submit" onclick="return confirm('☢️ ATTENTION ☢️\nYou are about to perform a FULL FACTORY RESET.\nThis will completely wipe the database file and lock out current sessions.\n\nAre you ready to proceed? This CANNOT be undone!');"
+                                        class="py-2.5 px-6 bg-rose-600 hover:bg-rose-700 text-white font-extrabold rounded-lg text-xs transition shadow-sm">
+                                    Perform Factory Reset
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- RENAME GRADE MODAL (Tailwind Overlay) -->
+    <div id="renameModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 transition duration-200">
+        <div class="bg-white rounded-2xl border border-slate-150 shadow-2xl max-w-sm w-full p-6 space-y-4 animate-scale-in">
+            <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider">✏ Rename Class Suffix</h4>
+            <p class="text-[11px] text-slate-400 leading-relaxed">Renaming dynamically cascade updates the assigned grade attributes of all active students inside this cohort.</p>
+            <form id="renameForm" method="POST" action="" class="space-y-4">
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-2">New Cohort Name Suffix</label>
+                    <input type="text" id="new_name_input" name="new_name" required placeholder="e.g. Grade 9 Support"
+                        class="w-full bg-slate-50 border border-slate-200 rounded-lg text-slate-800 text-xs px-3.5 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition">
+                </div>
+                <div class="flex items-center justify-end space-x-3">
+                    <button type="button" onclick="closeRenameModal()" class="px-3.5 py-1.5 text-xs font-bold text-slate-500 hover:text-slate-700">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-lg transition shadow-sm">Save Change</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Module Panel tab switcher
+        function switchSettingsSection(moduleId, btn) {
+            document.querySelectorAll('.module-pane').forEach(p => p.classList.add('hidden'));
+            document.getElementById(moduleId).classList.remove('hidden');
+
+            document.querySelectorAll('.settings-tab').forEach(t => t.classList.remove('active'));
+            btn.classList.add('active');
+
+            // Initialize QR generator immediately if the user lands on the QR tab
+            if (moduleId === 'network-module') {
+                setTimeout(regenerateQrCodeFromInput, 50);
+            }
+        }
+
+        // Enrollment subdirectory sub-tabs
+        function switchEnrollView(paneId) {
+            document.querySelectorAll('.enroll-subpane').forEach(p => p.classList.add('hidden'));
+            document.getElementById(paneId).classList.remove('hidden');
+
+            const enrollTabBtn = document.getElementById('enroll-tab-btn');
+            const activeTabBtn = document.getElementById('active-tab-btn');
+            const gradTabBtn = document.getElementById('grad-tab-btn');
+
+            [enrollTabBtn, activeTabBtn, gradTabBtn].forEach(b => {
+                b.className = "border-transparent text-slate-400 hover:text-slate-600 border-b-2 py-2 px-1 text-xs font-bold";
+            });
+
+            const activeBtn = (paneId === 'enroll-pane') ? enrollTabBtn : (paneId === 'active-pane') ? activeTabBtn : gradTabBtn;
+            activeBtn.className = "border-indigo-500 text-indigo-600 border-b-2 py-2 px-1 text-xs font-bold";
+        }
+
+        // Class Splitter - Dynamic Roster Loading
+        async function loadSplitterStudents() {
+            const grade = document.getElementById('splitterSourceGrade').value;
+            const container = document.getElementById('splitterStudentList');
+            if (!grade) return;
+
+            container.innerHTML = `<p class="text-slate-400 font-medium text-center py-6">Parsing eligible student roster...</p>`;
+            
+            try {
+                const response = await fetch(`/api/students?grade=${encodeURIComponent(grade)}`);
+                const students = await response.json();
+                
+                if (students.length === 0) {
+                    container.innerHTML = `<p class="text-slate-400 font-medium text-center py-6">No active student profiles currently inside this cohort.</p>`;
+                    return;
+                }
+
+                container.innerHTML = '';
+                students.forEach(s => {
+                    const item = document.createElement('label');
+                    item.className = "flex items-center space-x-3 p-2 hover:bg-slate-50/50 rounded-lg cursor-pointer transition";
+                    item.innerHTML = `
+                        <input type="checkbox" name="split_students" value="${s.id}" class="rounded text-indigo-600 focus:ring-indigo-500 border-slate-300">
+                        <span class="font-semibold text-slate-800">${s.name}</span>
+                    `;
+                    container.appendChild(item);
+                });
+            } catch (err) {
+                container.innerHTML = `<p class="text-rose-500 font-medium text-center py-6">Failed to load cohort roster context.</p>`;
+            }
+        }
+
+        function selectAllSplitter(status) {
+            document.querySelectorAll('input[name="split_students"]').forEach(cb => cb.checked = status);
+        }
+
+        // Inline Suffix Name Renaming Modals
+        function openRenameModal(gradeId, currentName) {
+            document.getElementById('renameForm').action = `/settings/edit-grade/${gradeId}`;
+            document.getElementById('new_name_input').value = currentName;
+            document.getElementById('renameModal').classList.remove('hidden');
+        }
+
+        function closeRenameModal() {
+            document.getElementById('renameModal').classList.add('hidden');
+        }
+
+        // Collapsible Active Directory Dropdowns
+        function toggleActiveGradeDropdown(targetId, btn) {
+            const container = document.getElementById(targetId);
+            const svg = btn.querySelector('svg');
+            
+            if (container.classList.contains('hidden')) {
+                container.classList.remove('hidden');
+                svg.classList.add('rotate-180');
+            } else {
+                container.classList.add('hidden');
+                svg.classList.remove('rotate-180');
+            }
+        }
+
+        // QR Code Generator Logic (QRious Canvas engine)
+        let qrGenerator = null;
+
+        function regenerateQrCodeFromInput() {
+            const targetUrl = document.getElementById('qrTargetUrlInput').value.trim();
+            document.getElementById('qrLabelAddressText').innerText = targetUrl;
+
+            const canvas = document.getElementById('qrCodeCanvas');
+            if (!qrGenerator) {
+                qrGenerator = new QRious({
+                    element: canvas,
+                    value: targetUrl,
+                    size: 130,
+                    level: 'H' // High correction level for clean scanning
+                });
+            } else {
+                qrGenerator.value = targetUrl;
+            }
+        }
+
+        function setQrUrlPreset(presetValue) {
+            document.getElementById('qrTargetUrlInput').value = presetValue;
+            regenerateQrCodeFromInput();
+        }
+
+        // Bootstrapping configurations based on active network settings
+        document.addEventListener('DOMContentLoaded', function() {
+            const connectionOrigin = window.location.origin;
+            const targetUrlInput = document.getElementById('qrTargetUrlInput');
+
+            // Default to friendly local mDNS address if accessing locally
+            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                targetUrlInput.value = "http://{{ hostname }}.local:5000";
+            } else {
+                // If accessed via a remote local IP on the network, default the QR code to use that active URL
+                targetUrlInput.value = connectionOrigin;
+                const noticeBody = document.querySelector('#autoDiscoveryNotice p.text-emerald-800/90');
+                if (noticeBody) {
+                    noticeBody.innerHTML = `We detected you are setting up the server from a client browser. The QR card below is auto-configured to target your active network connection URL: <strong class="font-mono bg-emerald-100/50 px-1.5 py-0.5 rounded">${connectionOrigin}</strong>.`;
+                }
+            }
+
+            // Draw the QR Code canvas immediately
+            regenerateQrCodeFromInput();
+        });
+    </script>
+</body>
+</html>
