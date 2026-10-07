@@ -1,4 +1,6 @@
 __pycache__
 backups
+build/
+dist/
 venv
 passport_tracker.db
