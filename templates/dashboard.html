@@ -1,122 +1,250 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>System Dashboard & Audit Center</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
     <style>
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
         }
     </style>
 </head>
+
 <body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
 
     <!-- Navbar -->
     <nav class="bg-slate-900 border-b border-slate-800 shadow-lg px-6 py-4">
         <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
             <div class="flex items-center space-x-3">
-                <div class="w-10 h-10 bg-indigo-600/10 border border-indigo-500/20 text-indigo-400 rounded-lg flex items-center justify-center">
+                <div
+                    class="w-10 h-10 bg-indigo-600/10 border border-indigo-500/20 text-indigo-400 rounded-lg flex items-center justify-center">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z">
+                        </path>
                     </svg>
                 </div>
                 <div>
                     <h1 class="text-lg font-bold text-white tracking-tight">Passport Safe Terminal</h1>
-                    <p class="text-[10px] text-slate-400 uppercase tracking-widest font-semibold">School Management System</p>
+                    <p class="text-[10px] text-slate-400 uppercase tracking-widest font-semibold">School Management
+                        System</p>
                 </div>
             </div>
-            
+
             <div class="flex flex-wrap items-center justify-center gap-3">
-                <span class="text-xs font-semibold text-slate-300 bg-slate-800/80 px-3 py-2 rounded-lg border border-slate-700/50 flex items-center gap-2">
+                <span
+                    class="text-xs font-semibold text-slate-300 bg-slate-800/80 px-3 py-2 rounded-lg border border-slate-700/50 flex items-center gap-2">
                     <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                     Logged: <span class="text-indigo-400 font-bold">@{{ current_user.username }}</span>
                 </span>
-                <a href="{{ url_for('index') }}" class="text-xs font-semibold px-4 py-2 text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg transition">Terminal</a>
-                <a href="{{ url_for('dashboard') }}" class="text-xs font-semibold px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition">Dashboard</a>
+                <a href="{{ url_for('index') }}"
+                    class="text-xs font-semibold px-4 py-2 text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg transition">Terminal</a>
+                <a href="{{ url_for('dashboard') }}"
+                    class="text-xs font-semibold px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition">Dashboard</a>
                 {% if current_user.role == 'Admin' %}
-                    <a href="{{ url_for('settings') }}" class="text-xs font-semibold px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition flex items-center gap-1">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31(2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                        Settings
-                    </a>
+                <a href="{{ url_for('settings') }}"
+                    class="text-xs font-semibold px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31(2.37-2.37.996.608 2.296.07 2.572-1.065z">
+                        </path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                    Settings
+                </a>
                 {% endif %}
-                <a href="{{ url_for('logout') }}" class="text-xs font-semibold px-4 py-2 border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 rounded-lg transition">Logout</a>
+                <a href="{{ url_for('logout') }}"
+                    class="text-xs font-semibold px-4 py-2 border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 rounded-lg transition">Logout</a>
             </div>
         </div>
     </nav>
 
     <!-- Main Workspace -->
     <main class="flex-grow max-w-7xl w-full mx-auto p-4 md:p-8 space-y-8">
-        
+
+        <!-- Header & Class/Group Filter Toolbar -->
+        <div
+            class="bg-white border border-slate-150 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+            <div>
+                <h2 class="text-xl font-bold text-slate-900 tracking-tight">Passport Safe Dashboard & Visual Summary
+                </h2>
+                <p class="text-xs text-slate-500 mt-1">Real-time status overview, class filtering, and comprehensive
+                    audit tracking.</p>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                <label for="classFilterSelect"
+                    class="text-xs font-bold text-slate-500 uppercase tracking-wider shrink-0">Filter by
+                    Class/Group:</label>
+                <select id="classFilterSelect"
+                    class="bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-xs px-3.5 py-2.5 font-bold focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition">
+                    <option value="ALL" selected>🌟 All Classes / Groups</option>
+                    {% for g in grades %}
+                    <option value="{{ g }}">{{ g }}</option>
+                    {% endfor %}
+                </select>
+
+                <select id="statusFilterSelect"
+                    class="bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-xs px-3.5 py-2.5 font-bold focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:outline-none transition">
+                    <option value="ALL" selected>All Statuses</option>
+                    <option value="In Safe">Secured In Safe</option>
+                    <option value="Out of Safe">Currently Out</option>
+                </select>
+            </div>
+        </div>
+
         <!-- Summary KPI Metrics Cards (Filtered for Active School Members Only) -->
         {% set active_students = students | rejectattr('grade', 'equalto', 'Graduated') | list %}
         {% set active_total_count = active_students | length %}
-        {% set active_safe_count = active_students | selectattr('current_status', 'equalto', 'In Safe') | list | length %}
+        {% set active_safe_count = active_students | selectattr('current_status', 'equalto', 'In Safe') | list | length
+        %}
         {% set active_out_count = active_total_count - active_safe_count %}
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+        {% set active_total_passports = active_students | map(attribute='passport_count') | sum %}
+        {% set active_safe_passports = active_students | selectattr('current_status', 'equalto', 'In Safe') |
+        map(attribute='passport_count') | sum %}
+        {% set active_out_passports = active_total_passports - active_safe_passports %}
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-5">
             <!-- Metric 1: Total Active -->
-            <div class="bg-white border border-slate-150 rounded-2xl p-6 shadow-sm flex items-center space-x-4">
-                <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+            <div class="bg-white border border-slate-150 rounded-2xl p-5 shadow-sm flex items-center space-x-4">
+                <div
+                    class="w-11 h-11 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center shrink-0">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z">
+                        </path>
+                    </svg>
                 </div>
                 <div>
-                    <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Active Enrolled</p>
-                    <h3 class="text-2xl font-bold text-slate-800 mt-0.5">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Active Students</p>
+                    <h3 class="text-xl font-bold text-slate-800 mt-0.5" id="kpiStudentCount">
                         {{ active_total_count }} Student{% if active_total_count != 1 %}s{% endif %}
                     </h3>
                 </div>
             </div>
 
-            <!-- Metric 2: Safe (Excludes Alumni) -->
-            <div class="bg-white border border-slate-150 rounded-2xl p-6 shadow-sm flex items-center space-x-4">
-                <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+            <!-- Metric 2: Total Passports Tracked -->
+            <div class="bg-white border border-slate-150 rounded-2xl p-5 shadow-sm flex items-center space-x-4">
+                <div class="w-11 h-11 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center shrink-0">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V4a2 2 0 012-2h2a2 2 0 012 2v2m-6 0h6">
+                        </path>
+                    </svg>
                 </div>
                 <div>
-                    <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Secured In Safe</p>
-                    <h3 class="text-2xl font-bold text-emerald-600 mt-0.5">
-                        {{ active_safe_count }} Passport{% if active_safe_count != 1 %}s{% endif %}
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Passports</p>
+                    <h3 class="text-xl font-bold text-blue-600 mt-0.5" id="kpiTotalPassports">
+                        {{ active_total_passports }} Passport{% if active_total_passports != 1 %}s{% endif %}
                     </h3>
                 </div>
             </div>
 
-            <!-- Metric 3: Currently Out (Excludes Alumni) -->
-            <div class="bg-white border border-slate-150 rounded-2xl p-6 shadow-sm flex items-center space-x-4">
-                <div class="w-12 h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+            <!-- Metric 3: Safe Passports -->
+            <div class="bg-white border border-slate-150 rounded-2xl p-5 shadow-sm flex items-center space-x-4">
+                <div
+                    class="w-11 h-11 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center shrink-0">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z">
+                        </path>
+                    </svg>
                 </div>
                 <div>
-                    <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Currently Out</p>
-                    <h3 class="text-2xl font-bold text-amber-600 mt-0.5">
-                        {{ active_out_count }} Passport{% if active_out_count != 1 %}s{% endif %}
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Secured In Safe</p>
+                    <h3 class="text-xl font-bold text-emerald-600 mt-0.5" id="kpiSafePassports">
+                        {{ active_safe_passports }} Passport{% if active_safe_passports != 1 %}s{% endif %}
                     </h3>
                 </div>
+            </div>
+
+            <!-- Metric 4: Currently Out Passports -->
+            <div class="bg-white border border-slate-150 rounded-2xl p-5 shadow-sm flex items-center space-x-4">
+                <div class="w-11 h-11 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center shrink-0">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
+                        </path>
+                    </svg>
+                </div>
+                <div>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Currently Out</p>
+                    <h3 class="text-xl font-bold text-amber-600 mt-0.5" id="kpiOutPassports">
+                        {{ active_out_passports }} Passport{% if active_out_passports != 1 %}s{% endif %}
+                    </h3>
+                </div>
+            </div>
+        </div>
+
+        <!-- Visual Safe Ratio Progress Bar -->
+        <div class="bg-white border border-slate-150 rounded-2xl p-5 shadow-sm space-y-2">
+            <div class="flex items-center justify-between text-xs font-bold">
+                <span class="text-slate-600 uppercase tracking-wider">Overall Safe Retention Ratio</span>
+                <span id="ratioText" class="text-indigo-600">
+                    {% if active_total_passports > 0 %}
+                    {{ ((active_safe_passports / active_total_passports) * 100) | round(1) }}% Secured
+                    {% else %}
+                    100% Secured
+                    {% endif %}
+                </span>
+            </div>
+            <div class="w-full h-3 bg-amber-100 rounded-full overflow-hidden flex">
+                {% set safe_pct = (((active_safe_passports | float / active_total_passports) * 100) | round(2)) if
+                active_total_passports > 0 else 100 %}
+                <div id="ratioSafeBar" class="h-full bg-emerald-500 transition-all duration-500"
+                    style="width: {{ safe_pct }}%;"></div>
+                <div id="ratioOutBar" class="h-full bg-amber-500 transition-all duration-500"
+                    style="width: {{ 100 - safe_pct }}%;"></div>
+            </div>
+            <div class="flex items-center justify-between text-[11px] font-medium text-slate-400">
+                <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> In
+                    Safe (<span id="ratioSafeCount">{{ active_safe_passports }}</span>)</span>
+                <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-500"></span> Checked
+                    Out (<span id="ratioOutCount">{{ active_out_passports }}</span>)</span>
             </div>
         </div>
 
         <!-- tab navigation panels -->
         <div class="border-b border-slate-200">
             <nav class="flex space-x-6 overflow-x-auto" id="dashboardTabs" aria-label="Tabs">
-                <button onclick="switchTab('rosterPanel', this)" class="tab-btn active border-indigo-600 text-indigo-600 border-b-2 py-4 px-1 text-sm font-semibold whitespace-nowrap">
+                <button onclick="switchTab('rosterPanel', this)"
+                    class="tab-btn active border-indigo-600 text-indigo-600 border-b-2 py-4 px-1 text-sm font-semibold whitespace-nowrap">
                     📋 Live Roster Grid
                 </button>
-                <button onclick="switchTab('auditPanel', this)" class="tab-btn border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 border-b-2 py-4 px-1 text-sm font-semibold whitespace-nowrap">
+                <button onclick="switchTab('inboxPanel', this)"
+                    class="tab-btn border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 border-b-2 py-4 px-1 text-sm font-semibold whitespace-nowrap flex items-center gap-1.5">
+                    <span>📥 System Inbox</span>
+                    <span
+                        class="px-1.5 py-0.5 text-[10px] font-bold rounded-full {% if notifications | length > 0 %} bg-indigo-600 text-white {% else %} bg-slate-200 text-slate-600 {% endif %}">
+                        {{ notifications | length }}
+                    </span>
+                </button>
+                <button onclick="switchTab('auditPanel', this)"
+                    class="tab-btn border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 border-b-2 py-4 px-1 text-sm font-semibold whitespace-nowrap">
                     📜 System Audit Log
                 </button>
-                
+
                 <!-- Tab: Outstanding Alumni Passports in Vault -->
-                {% set alumni_vault_list = students | selectattr('grade', 'equalto', 'Graduated') | selectattr('current_status', 'equalto', 'In Safe') | list %}
-                <button onclick="switchTab('alumniVaultPanel', this)" class="tab-btn border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 border-b-2 py-4 px-1 text-sm font-semibold whitespace-nowrap flex items-center gap-1.5">
+                {% set alumni_vault_list = students | selectattr('grade', 'equalto', 'Graduated') |
+                selectattr('current_status', 'equalto', 'In Safe') | list %}
+                <button onclick="switchTab('alumniVaultPanel', this)"
+                    class="tab-btn border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 border-b-2 py-4 px-1 text-sm font-semibold whitespace-nowrap flex items-center gap-1.5">
                     <span>🎓 Alumni in Vault</span>
-                    <span class="px-1.5 py-0.5 text-[10px] font-bold rounded-full {% if alumni_vault_list | length > 0 %} bg-amber-500 text-slate-900 {% else %} bg-slate-200 text-slate-600 {% endif %}">
+                    <span
+                        class="px-1.5 py-0.5 text-[10px] font-bold rounded-full {% if alumni_vault_list | length > 0 %} bg-amber-500 text-slate-900 {% else %} bg-slate-200 text-slate-600 {% endif %}">
                         {{ alumni_vault_list | length }}
                     </span>
                 </button>
 
-                <button onclick="switchTab('archivePanel', this)" class="tab-btn border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 border-b-2 py-4 px-1 text-sm font-semibold whitespace-nowrap">
+                <button onclick="switchTab('archivePanel', this)"
+                    class="tab-btn border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 border-b-2 py-4 px-1 text-sm font-semibold whitespace-nowrap">
                     🗄 Term History Archives
                 </button>
             </nav>
@@ -124,15 +252,20 @@
 
         <div class="tab-content-area">
             <!-- VIEW A: LIVE ROSTER GRID -->
-            <div id="rosterPanel" class="tab-pane bg-white border border-slate-150 rounded-2xl shadow-sm overflow-hidden">
+            <div id="rosterPanel"
+                class="tab-pane bg-white border border-slate-150 rounded-2xl shadow-sm overflow-hidden">
                 <div class="p-6 border-b border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4">
                     <div>
                         <h4 class="text-lg font-bold text-slate-800">Current Passport Ownership</h4>
-                        <p class="text-xs text-slate-400 mt-0.5">Real-time listing of active student passport status records</p>
+                        <p class="text-xs text-slate-400 mt-0.5">Real-time listing of active student passport status
+                            records</p>
                     </div>
                     <div class="relative w-full md:w-80">
                         <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                            </svg>
                         </span>
                         <input type="text" id="rosterSearch" placeholder="Filter active roster..."
                             class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition">
@@ -141,42 +274,71 @@
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse" id="rosterTable">
                         <thead>
-                            <tr class="bg-slate-50 text-slate-400 uppercase text-[10px] font-bold tracking-widest border-b border-slate-100">
+                            <tr
+                                class="bg-slate-50 text-slate-400 uppercase text-[10px] font-bold tracking-widest border-b border-slate-100">
                                 <th class="py-4 px-6">Student Name</th>
-                                <th class="py-4 px-6">Grade Class</th>
+                                <th class="py-4 px-6">Grade / Class</th>
+                                <th class="py-4 px-6">Passport Count</th>
                                 <th class="py-4 px-6">Current Status</th>
                                 <th class="py-4 px-6">Last Handled</th>
                                 <th class="py-4 px-6">Staff Associate</th>
+                                <th class="py-4 px-6 text-center">Terminal</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100 text-sm">
                             <!-- Filter loop here to completely exclude graduated alumni from this list -->
                             {% for student in students if student.grade != 'Graduated' %}
-                            <tr class="hover:bg-slate-50/55 transition duration-100 border-l-4 border-transparent">
+                            <tr class="roster-row hover:bg-slate-50/55 transition duration-100 border-l-4 border-transparent"
+                                data-grade="{{ student.grade }}" data-status="{{ student.current_status }}"
+                                data-passports="{{ student.passport_count }}">
                                 <td class="py-4 px-6 font-semibold text-slate-800">
                                     {{ student.name }}
                                 </td>
                                 <td class="py-4 px-6 text-slate-500">
-                                    <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-indigo-50 text-indigo-700">
+                                    <span
+                                        class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-indigo-50 text-indigo-700">
                                         {{ student.grade }}
                                     </span>
                                 </td>
                                 <td class="py-4 px-6">
+                                    <span
+                                        class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                                        {{ student.passport_count }} Passport{% if student.passport_count != 1 %}s{%
+                                        endif %}
+                                    </span>
+                                </td>
+                                <td class="py-4 px-6">
                                     {% if student.current_status == 'In Safe' %}
-                                        <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-ping"></span>
-                                            In Safe
-                                        </span>
+                                    <span
+                                        class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                        <span
+                                            class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-ping"></span>
+                                        In Safe
+                                    </span>
                                     {% else %}
-                                        <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                                            <span class="w-1.5 h-1.5 rounded-full bg-amber-500 mr-1.5"></span>
-                                            Out of Safe
-                                        </span>
+                                    <span
+                                        class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-amber-500 mr-1.5"></span>
+                                        Out of Safe
+                                    </span>
                                     {% endif %}
                                 </td>
-                                <td class="py-4 px-6 text-slate-400 text-xs">{{ student.last_moved.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                <td class="py-4 px-6 text-slate-400 text-xs">{{ student.last_moved.strftime('%Y-%m-%d
+                                    %H:%M:%S') }}</td>
                                 <td class="py-4 px-6">
-                                    <span class="text-xs font-semibold bg-slate-100 text-slate-600 px-2 py-1 rounded">@{{ student.last_handled_by or 'System' }}</span>
+                                    <span
+                                        class="text-xs font-semibold bg-slate-100 text-slate-600 px-2 py-1 rounded">@{{
+                                        student.last_handled_by or 'System' }}</span>
+                                </td>
+                                <td class="py-4 px-6 text-center">
+                                    <a href="{{ url_for('index', student_id=student.id) }}"
+                                        class="inline-flex items-center space-x-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition shadow-sm">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                        </svg>
+                                        <span>Terminal</span>
+                                    </a>
                                 </td>
                             </tr>
                             {% endfor %}
@@ -185,16 +347,90 @@
                 </div>
             </div>
 
-            <!-- VIEW B: SYSTEM AUDIT LOG -->
-            <div id="auditPanel" class="tab-pane hidden bg-white border border-slate-150 rounded-2xl shadow-sm overflow-hidden">
+            <!-- VIEW E: SYSTEM INBOX -->
+            <div id="inboxPanel"
+                class="tab-pane hidden bg-white border border-slate-150 rounded-2xl shadow-sm overflow-hidden">
                 <div class="p-6 border-b border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4">
                     <div>
-                        <h4 class="text-lg font-bold text-slate-800">Immutable Chronological Log</h4>
-                        <p class="text-xs text-slate-400 mt-0.5">Permanent journal of deposits and withdrawals</p>
+                        <h4 class="text-lg font-bold text-slate-800">Internal System Notification Inbox</h4>
+                        <p class="text-xs text-slate-400 mt-0.5">Chronological record of system notifications with email
+                            dispatch status tags</p>
                     </div>
                     <div class="relative w-full md:w-80">
                         <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                            </svg>
+                        </span>
+                        <input type="text" id="inboxSearch" placeholder="Search inbox notifications..."
+                            class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition">
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse" id="inboxTable">
+                        <thead>
+                            <tr
+                                class="bg-slate-50 text-slate-400 uppercase text-[10px] font-bold tracking-widest border-b border-slate-100">
+                                <th class="py-4 px-6">Timestamp</th>
+                                <th class="py-4 px-6">Notification Title</th>
+                                <th class="py-4 px-6">Message Details</th>
+                                <th class="py-4 px-6">Recipients</th>
+                                <th class="py-4 px-6">Email Delivery Status</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 text-sm">
+                            {% if notifications %}
+                            {% for notif in notifications %}
+                            <tr class="hover:bg-slate-50/55 transition duration-100">
+                                <td class="py-4 px-6 text-slate-400 text-xs font-semibold whitespace-nowrap">{{
+                                    notif.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                <td class="py-4 px-6 font-bold text-slate-800">{{ notif.title }}</td>
+                                <td class="py-4 px-6 text-xs text-slate-600 leading-relaxed">{{ notif.message }}</td>
+                                <td class="py-4 px-6 text-xs font-mono text-slate-500">{{ notif.recipients }}</td>
+                                <td class="py-4 px-6 whitespace-nowrap">
+                                    {% if notif.email_status == 'sent via email' %}
+                                    <span
+                                        class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>
+                                        (sent via email)
+                                    </span>
+                                    {% else %}
+                                    <span
+                                        class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-amber-500 mr-1.5"></span>
+                                        (not sent via email)
+                                    </span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center text-slate-400 py-8 font-medium">No inbox
+                                    notifications logged yet.</td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- VIEW B: SYSTEM AUDIT LOG -->
+            <div id="auditPanel"
+                class="tab-pane hidden bg-white border border-slate-150 rounded-2xl shadow-sm overflow-hidden">
+                <div class="p-6 border-b border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div>
+                        <h4 class="text-lg font-bold text-slate-800">Immutable Chronological Log</h4>
+                        <p class="text-xs text-slate-400 mt-0.5">Permanent journal of deposits and authorized
+                            withdrawals with checkout reasons</p>
+                    </div>
+                    <div class="relative w-full md:w-80">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                            </svg>
                         </span>
                         <input type="text" id="auditSearch" placeholder="Search log audit record..."
                             class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition">
@@ -203,31 +439,67 @@
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse" id="auditTable">
                         <thead>
-                            <tr class="bg-slate-50 text-slate-400 uppercase text-[10px] font-bold tracking-widest border-b border-slate-100">
+                            <tr
+                                class="bg-slate-50 text-slate-400 uppercase text-[10px] font-bold tracking-widest border-b border-slate-100">
                                 <th class="py-4 px-6">Timestamp</th>
                                 <th class="py-4 px-6">Student Name</th>
                                 <th class="py-4 px-6">Operation Action</th>
-                                <th class="py-4 px-6">Authorized Officer</th>
+                                <th class="py-4 px-6">Reason for Checkout</th>
+                                <th class="py-4 px-6">Authorized Staff Member</th>
+                                <th class="py-4 px-6">Logged User</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100 text-sm">
                             {% for log in logs %}
-                            <tr class="hover:bg-slate-50/55 transition duration-100">
-                                <td class="py-4 px-6 text-slate-400 text-xs font-semibold">{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                            <tr class="audit-row hover:bg-slate-50/55 transition duration-100">
+                                <td class="py-4 px-6 text-slate-400 text-xs font-semibold">{{
+                                    log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
                                 <td class="py-4 px-6 font-semibold text-slate-800">{{ log.student_name }}</td>
                                 <td class="py-4 px-6">
                                     {% if log.action == 'In' %}
-                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-emerald-50 text-emerald-800">
-                                            ⬇ Deposited In
-                                        </span>
+                                    <span
+                                        class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-emerald-50 text-emerald-800">
+                                        ⬇ Deposited In
+                                    </span>
                                     {% else %}
-                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-rose-50 text-rose-800">
-                                            ⬆ Withdrawn Out
-                                        </span>
+                                    <span
+                                        class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-rose-50 text-rose-800">
+                                        ⬆ Withdrawn Out
+                                    </span>
                                     {% endif %}
                                 </td>
                                 <td class="py-4 px-6">
-                                    <span class="text-xs font-semibold bg-slate-100 text-slate-600 px-2.5 py-1 rounded">@{{ log.teacher_username }}</span>
+                                    {% if log.reason %}
+                                    {% if log.reason in ['Travel In Israel', 'Travel Outside of Israel', 'Leaving the
+                                    Yeshiva'] %}
+                                    <span
+                                        class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-rose-100 text-rose-800 border border-rose-200">
+                                        🚨 {{ log.reason }}
+                                    </span>
+                                    {% else %}
+                                    <span
+                                        class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-100 text-slate-700">
+                                        {{ log.reason }}
+                                    </span>
+                                    {% endif %}
+                                    {% else %}
+                                    <span class="text-xs text-slate-400 font-normal">N/A</span>
+                                    {% endif %}
+                                </td>
+                                <td class="py-4 px-6">
+                                    {% if log.staff_member %}
+                                    <span
+                                        class="text-xs font-bold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-md border border-indigo-100">
+                                        {{ log.staff_member }}
+                                    </span>
+                                    {% else %}
+                                    <span class="text-xs text-slate-400">N/A</span>
+                                    {% endif %}
+                                </td>
+                                <td class="py-4 px-6">
+                                    <span
+                                        class="text-xs font-semibold bg-slate-100 text-slate-600 px-2.5 py-1 rounded">@{{
+                                        log.teacher_username }}</span>
                                 </td>
                             </tr>
                             {% endfor %}
@@ -237,15 +509,20 @@
             </div>
 
             <!-- VIEW D: ALUMNI IN VAULT -->
-            <div id="alumniVaultPanel" class="tab-pane hidden bg-white border border-slate-150 rounded-2xl shadow-sm overflow-hidden">
+            <div id="alumniVaultPanel"
+                class="tab-pane hidden bg-white border border-slate-150 rounded-2xl shadow-sm overflow-hidden">
                 <div class="p-6 border-b border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4">
                     <div>
                         <h4 class="text-lg font-bold text-slate-800">Outstanding Graduate Passports</h4>
-                        <p class="text-xs text-slate-400 mt-0.5">Listing of alumni who graduated but whose passports are still inside the safe</p>
+                        <p class="text-xs text-slate-400 mt-0.5">Listing of alumni who graduated but whose passports are
+                            still inside the safe</p>
                     </div>
                     <div class="relative w-full md:w-80">
                         <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                            </svg>
                         </span>
                         <input type="text" id="alumniSearch" placeholder="Filter outstanding alumni..."
                             class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition">
@@ -254,7 +531,8 @@
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse" id="alumniTable">
                         <thead>
-                            <tr class="bg-slate-50 text-slate-400 uppercase text-[10px] font-bold tracking-widest border-b border-slate-100">
+                            <tr
+                                class="bg-slate-50 text-slate-400 uppercase text-[10px] font-bold tracking-widest border-b border-slate-100">
                                 <th class="py-4 px-6">Graduate Name</th>
                                 <th class="py-4 px-6">Current Roster Status</th>
                                 <th class="py-4 px-6">Passport Location Status</th>
@@ -264,30 +542,38 @@
                         </thead>
                         <tbody class="divide-y divide-slate-100 text-sm">
                             {% if alumni_vault_list %}
-                                {% for student in alumni_vault_list %}
-                                <tr class="hover:bg-slate-50/55 transition duration-100 border-l-4 border-amber-500 bg-amber-50/5">
-                                    <td class="py-4 px-6 font-semibold text-slate-800">{{ student.name }}</td>
-                                    <td class="py-4 px-6 text-slate-500">
-                                        <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
-                                            🎓 Alumni Graduate
-                                        </span>
-                                    </td>
-                                    <td class="py-4 px-6">
-                                        <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse"></span>
-                                            Secured In Safe
-                                        </span>
-                                    </td>
-                                    <td class="py-4 px-6 text-slate-400 text-xs">{{ student.last_moved.strftime('%Y-%m-%d %H:%M:%S') }}</td>
-                                    <td class="py-4 px-6">
-                                        <span class="text-xs font-semibold bg-slate-100 text-slate-600 px-2 py-1 rounded">@{{ student.last_handled_by or 'System' }}</span>
-                                    </td>
-                                </tr>
-                                {% endfor %}
+                            {% for student in alumni_vault_list %}
+                            <tr
+                                class="hover:bg-slate-50/55 transition duration-100 border-l-4 border-amber-500 bg-amber-50/5">
+                                <td class="py-4 px-6 font-semibold text-slate-800">{{ student.name }}</td>
+                                <td class="py-4 px-6 text-slate-500">
+                                    <span
+                                        class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                                        🎓 Alumni Graduate
+                                    </span>
+                                </td>
+                                <td class="py-4 px-6">
+                                    <span
+                                        class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                        <span
+                                            class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse"></span>
+                                        Secured In Safe
+                                    </span>
+                                </td>
+                                <td class="py-4 px-6 text-slate-400 text-xs">{{ student.last_moved.strftime('%Y-%m-%d
+                                    %H:%M:%S') }}</td>
+                                <td class="py-4 px-6">
+                                    <span
+                                        class="text-xs font-semibold bg-slate-100 text-slate-600 px-2 py-1 rounded">@{{
+                                        student.last_handled_by or 'System' }}</span>
+                                </td>
+                            </tr>
+                            {% endfor %}
                             {% else %}
-                                <tr>
-                                    <td colspan="5" class="text-center text-slate-400 py-8 font-medium">All graduated students have successfully withdrawn their passports.</td>
-                                </tr>
+                            <tr>
+                                <td colspan="5" class="text-center text-slate-400 py-8 font-medium">All graduated
+                                    students have successfully withdrawn their passports.</td>
+                            </tr>
                             {% endif %}
                         </tbody>
                     </table>
@@ -302,51 +588,63 @@
                 </div>
 
                 {% if archive_periods %}
-                    {% for period in archive_periods %}
-                    <div class="bg-white border border-slate-150 rounded-2xl shadow-sm overflow-hidden">
-                        <button onclick="toggleAccordion('coll{{ period.id }}')" class="w-full flex items-center justify-between p-5 hover:bg-slate-50 transition">
-                            <div class="flex items-center space-x-3 text-left">
-                                <div class="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-lg flex items-center justify-center">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 4H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-2m-4-1v8m0 0l3-3m-3 3L9 8m-5 5h2.586a1 1 0 01.707.293l2.414 2.414a1 1 0 00.707.293h3.172a1 1 0 00.707-.293l2.414-2.414a1 1 0 01.707-.293H20"></path></svg>
-                                </div>
-                                <div>
-                                    <h5 class="text-sm font-bold text-slate-800">{{ period.label }}</h5>
-                                    <p class="text-[11px] text-slate-400 font-medium">Archived context sequence: {{ period.archived_at.strftime('%Y-%m-%d') }}</p>
-                                </div>
+                {% for period in archive_periods %}
+                <div class="bg-white border border-slate-150 rounded-2xl shadow-sm overflow-hidden">
+                    <button onclick="toggleAccordion('coll{{ period.id }}')"
+                        class="w-full flex items-center justify-between p-5 hover:bg-slate-50 transition">
+                        <div class="flex items-center space-x-3 text-left">
+                            <div
+                                class="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-lg flex items-center justify-center">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M8 4H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-2m-4-1v8m0 0l3-3m-3 3L9 8m-5 5h2.586a1 1 0 01.707.293l2.414 2.414a1 1 0 00.707.293h3.172a1 1 0 00.707-.293l2.414-2.414a1 1 0 01.707-.293H20">
+                                    </path>
+                                </svg>
                             </div>
-                            <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                        </button>
-                        
-                        <div id="coll{{ period.id }}" class="hidden border-t border-slate-100 overflow-x-auto">
-                            <table class="w-full text-left border-collapse">
-                                <thead class="bg-slate-50 text-slate-400 uppercase text-[9px] font-bold tracking-wider">
-                                    <tr>
-                                        <th class="py-3 px-6">Student Name</th>
-                                        <th class="py-3 px-6">Archive Grade Target</th>
-                                        <th class="py-3 px-6">Safe Status Then</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-slate-100 text-xs text-slate-600">
-                                    {% for s in period.students %}
-                                    <tr>
-                                        <td class="py-3 px-6 font-semibold text-slate-800">{{ s.name }}</td>
-                                        <td class="py-3 px-6">{{ s.grade_at_archive }}</td>
-                                        <td class="py-3 px-6">
-                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-600">
-                                                {{ s.status_at_archive }}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
+                            <div>
+                                <h5 class="text-sm font-bold text-slate-800">{{ period.label }}</h5>
+                                <p class="text-[11px] text-slate-400 font-medium">Archived context sequence: {{
+                                    period.archived_at.strftime('%Y-%m-%d') }}</p>
+                            </div>
                         </div>
+                        <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
+                            </path>
+                        </svg>
+                    </button>
+
+                    <div id="coll{{ period.id }}" class="hidden border-t border-slate-100 overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead class="bg-slate-50 text-slate-400 uppercase text-[9px] font-bold tracking-wider">
+                                <tr>
+                                    <th class="py-3 px-6">Student Name</th>
+                                    <th class="py-3 px-6">Archive Grade Target</th>
+                                    <th class="py-3 px-6">Safe Status Then</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 text-xs text-slate-600">
+                                {% for s in period.students %}
+                                <tr>
+                                    <td class="py-3 px-6 font-semibold text-slate-800">{{ s.name }}</td>
+                                    <td class="py-3 px-6">{{ s.grade_at_archive }}</td>
+                                    <td class="py-3 px-6">
+                                        <span
+                                            class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-600">
+                                            {{ s.status_at_archive }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
                     </div>
-                    {% endfor %}
+                </div>
+                {% endfor %}
                 {% else %}
-                    <div class="bg-white border border-slate-150 rounded-2xl shadow-sm p-8 text-center">
-                        <p class="text-sm text-slate-400 font-medium">No archived term timelines detected in system logs.</p>
-                    </div>
+                <div class="bg-white border border-slate-150 rounded-2xl shadow-sm p-8 text-center">
+                    <p class="text-sm text-slate-400 font-medium">No archived term timelines detected in system logs.
+                    </p>
+                </div>
                 {% endif %}
             </div>
         </div>
@@ -356,7 +654,7 @@
         function switchTab(tabId, btn) {
             document.querySelectorAll('.tab-pane').forEach(p => p.classList.add('hidden'));
             document.getElementById(tabId).classList.remove('hidden');
-            
+
             document.querySelectorAll('.tab-btn').forEach(b => {
                 b.classList.remove('border-indigo-600', 'text-indigo-600');
                 b.classList.add('border-transparent', 'text-slate-500');
@@ -370,10 +668,77 @@
             panel.classList.toggle('hidden');
         }
 
+        // Dynamic Filtering by Class/Group & Status
+        const classFilterSelect = document.getElementById('classFilterSelect');
+        const statusFilterSelect = document.getElementById('statusFilterSelect');
+        const rosterSearchInput = document.getElementById('rosterSearch');
+
+        function applyDashboardFilters() {
+            const selectedClass = classFilterSelect.value;
+            const selectedStatus = statusFilterSelect.value;
+            const searchTerm = rosterSearchInput ? rosterSearchInput.value.toLowerCase().trim() : '';
+
+            let visibleStudents = 0;
+            let visibleTotalPassports = 0;
+            let visibleSafePassports = 0;
+            let visibleOutPassports = 0;
+
+            const rosterRows = document.querySelectorAll('#rosterTable tbody tr.roster-row');
+            rosterRows.forEach(row => {
+                const rowGrade = row.getAttribute('data-grade');
+                const rowStatus = row.getAttribute('data-status');
+                const rowPassports = parseInt(row.getAttribute('data-passports') || '1', 10);
+                const rowText = row.textContent.toLowerCase();
+
+                const classMatches = (selectedClass === 'ALL' || rowGrade === selectedClass);
+                const statusMatches = (selectedStatus === 'ALL' || rowStatus === selectedStatus);
+                const searchMatches = (!searchTerm || rowText.includes(searchTerm));
+
+                if (classMatches && statusMatches && searchMatches) {
+                    row.style.display = '';
+                    visibleStudents += 1;
+                    visibleTotalPassports += rowPassports;
+                    if (rowStatus === 'In Safe') {
+                        visibleSafePassports += rowPassports;
+                    } else {
+                        visibleOutPassports += rowPassports;
+                    }
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+
+            // Update KPI metric counters
+            document.getElementById('kpiStudentCount').innerText = `${visibleStudents} Student${visibleStudents !== 1 ? 's' : ''}`;
+            document.getElementById('kpiTotalPassports').innerText = `${visibleTotalPassports} Passport${visibleTotalPassports !== 1 ? 's' : ''}`;
+            document.getElementById('kpiSafePassports').innerText = `${visibleSafePassports} Passport${visibleSafePassports !== 1 ? 's' : ''}`;
+            document.getElementById('kpiOutPassports').innerText = `${visibleOutPassports} Passport${visibleOutPassports !== 1 ? 's' : ''}`;
+
+            // Update ratio progress bar
+            const ratioSafeCount = document.getElementById('ratioSafeCount');
+            const ratioOutCount = document.getElementById('ratioOutCount');
+            const ratioSafeBar = document.getElementById('ratioSafeBar');
+            const ratioOutBar = document.getElementById('ratioOutBar');
+            const ratioText = document.getElementById('ratioText');
+
+            if (ratioSafeCount) ratioSafeCount.innerText = visibleSafePassports;
+            if (ratioOutCount) ratioOutCount.innerText = visibleOutPassports;
+
+            const safePct = visibleTotalPassports > 0 ? ((visibleSafePassports / visibleTotalPassports) * 100) : 100;
+            if (ratioSafeBar) ratioSafeBar.style.width = `${safePct}%`;
+            if (ratioOutBar) ratioOutBar.style.width = `${100 - safePct}%`;
+            if (ratioText) ratioText.innerText = `${safePct.toFixed(1)}% Secured`;
+        }
+
+        if (classFilterSelect) classFilterSelect.addEventListener('change', applyDashboardFilters);
+        if (statusFilterSelect) statusFilterSelect.addEventListener('change', applyDashboardFilters);
+        if (rosterSearchInput) rosterSearchInput.addEventListener('keyup', applyDashboardFilters);
+
         function wireSearch(iId, tId) {
             const input = document.getElementById(iId);
-            if(input) {
-                input.addEventListener('keyup', function() {
+            if (input) {
+                input.addEventListener('keyup', function () {
+                    if (tId === 'rosterTable') return; // Handled by applyDashboardFilters
                     const term = this.value.toLowerCase();
                     document.querySelectorAll(`#${tId} tbody tr`).forEach(r => {
                         r.style.display = r.textContent.toLowerCase().includes(term) ? '' : 'none';
@@ -384,6 +749,8 @@
         wireSearch('rosterSearch', 'rosterTable');
         wireSearch('auditSearch', 'auditTable');
         wireSearch('alumniSearch', 'alumniTable');
+        wireSearch('inboxSearch', 'inboxTable');
     </script>
 </body>
+
 </html>

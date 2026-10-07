@@ -30,19 +30,25 @@
             </div>
             
             <div class="flex flex-wrap items-center justify-center gap-3">
-                <span class="text-xs font-semibold text-slate-300 bg-slate-800/80 px-3 py-2 rounded-lg border border-slate-700/50 flex items-center gap-2">
-                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    Logged: <span class="text-indigo-400 font-bold">@{{ current_user.username }}</span>
-                </span>
-                <a href="{{ url_for('index') }}" class="text-xs font-semibold px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition">Terminal</a>
-                <a href="{{ url_for('dashboard') }}" class="text-xs font-semibold px-4 py-2 text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg transition">Dashboard</a>
-                {% if current_user.role == 'Admin' %}
-                    <a href="{{ url_for('settings') }}" class="text-xs font-semibold px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-900 rounded-lg transition flex items-center gap-1">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                        Settings
-                    </a>
+                {% if current_user.is_authenticated %}
+                    <span class="text-xs font-semibold text-slate-300 bg-slate-800/80 px-3 py-2 rounded-lg border border-slate-700/50 flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        Logged: <span class="text-indigo-400 font-bold">@{{ current_user.username }}</span> ({{ current_user.role }})
+                    </span>
+                    <a href="{{ url_for('index') }}" class="text-xs font-semibold px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition">Terminal</a>
+                    <a href="{{ url_for('dashboard') }}" class="text-xs font-semibold px-4 py-2 text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg transition">Dashboard</a>
+                    {% if current_user.role == 'Admin' %}
+                        <a href="{{ url_for('settings') }}" class="text-xs font-semibold px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-900 rounded-lg transition flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                            Settings
+                        </a>
+                    {% endif %}
+                    <a href="{{ url_for('logout') }}" class="text-xs font-semibold px-4 py-2 border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 rounded-lg transition">Logout</a>
+                {% else %}
+                    <a href="{{ url_for('index') }}" class="text-xs font-semibold px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition">Terminal</a>
+                    <a href="{{ url_for('dashboard') }}" class="text-xs font-semibold px-4 py-2 text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg transition">Dashboard</a>
+                    <a href="{{ url_for('login') }}" class="text-xs font-semibold px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition">Staff Login</a>
                 {% endif %}
-                <a href="{{ url_for('logout') }}" class="text-xs font-semibold px-4 py-2 border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 rounded-lg transition">Logout</a>
             </div>
         </div>
     </nav>
@@ -78,6 +84,28 @@
             </div>
 
             <div class="p-6 md:p-8 space-y-6">
+                <!-- Teacher Identity Banner / Session Fallback Switcher -->
+                <div class="p-4 bg-slate-50 border border-slate-200/80 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                    <div class="flex items-center space-x-2">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
+                        <span class="font-semibold text-slate-500">Active Staff Session:</span>
+                        <span class="font-bold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-md border border-indigo-100">
+                            @{{ detected_teacher if detected_teacher else 'Unassigned' }}
+                        </span>
+                    </div>
+                    <form method="POST" action="{{ url_for('set_teacher_session') }}" class="flex items-center space-x-2 m-0 p-0 w-full sm:w-auto">
+                        <select name="teacher_alias" required class="bg-white border border-slate-200 rounded-lg text-xs px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold text-slate-700">
+                            <option value="" disabled selected>-- Select / Switch Teacher --</option>
+                            {% for t in teacher_options %}
+                                <option value="{{ t }}" {% if detected_teacher == t %}selected{% endif %}>@{{ t }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg text-xs transition shrink-0">
+                            Set Session
+                        </button>
+                    </form>
+                </div>
+
                 <form method="POST" action="{{ url_for('handle_transaction') }}" id="transactionForm">
                     <input type="hidden" id="student_id" name="student_id" required>
 
@@ -110,9 +138,64 @@
                                 list="studentOptions" id="studentSearch" placeholder="Please select a class category first..." disabled autocomplete="off">
                             <datalist id="studentOptions"></datalist>
                         </div>
-                        <div id="statusBadgeContainer" class="hidden mt-3 p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
-                            <span class="text-xs font-semibold text-slate-500">Live Passport Status:</span>
-                            <span id="statusBadge" class="text-xs font-bold px-3 py-1.5 rounded-lg"></span>
+                        
+                        <div id="statusBadgeContainer" class="hidden mt-3 p-3 bg-slate-50 border border-slate-200 rounded-xl flex flex-wrap items-center justify-between gap-2">
+                            <div class="flex items-center space-x-2">
+                                <span class="text-xs font-semibold text-slate-500">Live Passport Status:</span>
+                                <span id="statusBadge" class="text-xs font-bold px-3 py-1 rounded-lg"></span>
+                            </div>
+                            <div class="flex items-center space-x-1.5 bg-white border border-slate-200 px-2.5 py-1 rounded-lg">
+                                <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V4a2 2 0 012-2h2a2 2 0 012 2v2m-6 0h6"></path></svg>
+                                <span id="passportCountBadge" class="text-xs font-bold text-slate-700">1 Passport</span>
+                            </div>
+                        </div>
+
+                        <div id="passportSelectionContainer" class="hidden mt-3 rounded-xl border border-indigo-200 bg-indigo-50/70 p-3">
+                            <label for="passportSelection" class="block text-[11px] font-bold uppercase tracking-wider text-indigo-700 mb-1.5">Passport Selection</label>
+                            <select id="passportSelection" name="passport_selection" class="w-full bg-white border border-indigo-200 rounded-lg text-xs px-3 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
+                                <option value="all">Use All Registered Passports</option>
+                            </select>
+                            <p id="passportSelectionHelp" class="mt-1.5 text-[10px] text-indigo-700/80">Select how many passports this operation should include.</p>
+                        </div>
+                    </div>
+
+                    <!-- Step 3: Checkout Authorization & Reason Options (Required when withdrawing) -->
+                    <div id="checkoutDetailsContainer" class="hidden space-y-4 mb-6 p-5 bg-rose-50/50 border border-rose-200/70 rounded-2xl">
+                        <div class="flex items-center space-x-2 text-rose-800 border-b border-rose-200/60 pb-2">
+                            <svg class="w-4 h-4 text-rose-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                            <h3 class="text-xs font-bold uppercase tracking-wider">Required Checkout Authorizations</h3>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- Staff Member Selection -->
+                            <div>
+                                <label for="staff_member" class="block text-xs font-bold text-slate-700 mb-1.5">Authorized Staff Member <span class="text-rose-600">*</span></label>
+                                <select id="staff_member" name="staff_member" class="w-full bg-white border border-slate-200 rounded-xl text-slate-800 text-xs px-3.5 py-3 focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 focus:outline-none transition">
+                                    <option value="" disabled selected>-- Select Staff Member --</option>
+                                    <option value="Keren Klein">Keren Klein</option>
+                                    <option value="Gavri Leichter">Gavri Leichter</option>
+                                    <option value="Tova Stross">Tova Stross</option>
+                                    <option value="Ariella Mendlowitz">Ariella Mendlowitz</option>
+                                    <option value="Rav Cytrin">Rav Cytrin</option>
+                                    <option value="Madrich">Madrich</option>
+                                </select>
+                            </div>
+
+                            <!-- Reason for Checkout Selection -->
+                            <div>
+                                <label for="reason" class="block text-xs font-bold text-slate-700 mb-1.5">Reason for Checking Out <span class="text-rose-600">*</span></label>
+                                <select id="reason" name="reason" class="w-full bg-white border border-slate-200 rounded-xl text-slate-800 text-xs px-3.5 py-3 focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 focus:outline-none transition">
+                                    <option value="" disabled selected>-- Select Reason --</option>
+                                    <option value="LLC Related">LLC Related</option>
+                                    <option value="Medical">Medical</option>
+                                    <option value="Rav Kav">Rav Kav</option>
+                                    <option value="Package Pick Up">Package Pick Up</option>
+                                    <option value="MISC">MISC</option>
+                                    <option value="Travel In Israel">Travel In Israel 🚨 (Auto Email Alert)</option>
+                                    <option value="Travel Outside of Israel">Travel Outside of Israel 🚨 (Auto Email Alert)</option>
+                                    <option value="Leaving the Yeshiva">Leaving the Yeshiva 🚨 (Auto Email Alert)</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
 
@@ -143,7 +226,42 @@
         const btnText = document.getElementById('btnText');
         const statusBadgeContainer = document.getElementById('statusBadgeContainer');
         const statusBadge = document.getElementById('statusBadge');
+        const passportCountBadge = document.getElementById('passportCountBadge');
+        const passportSelectionContainer = document.getElementById('passportSelectionContainer');
+        const passportSelection = document.getElementById('passportSelection');
+        const passportSelectionHelp = document.getElementById('passportSelectionHelp');
+        const checkoutDetailsContainer = document.getElementById('checkoutDetailsContainer');
+        const staffMemberSelect = document.getElementById('staff_member');
+        const reasonSelect = document.getElementById('reason');
+        const transactionForm = document.getElementById('transactionForm');
+
         let studentMemoryMap = [];
+
+        window.addEventListener('DOMContentLoaded', async function() {
+            const preselectedStudentId = "{{ selected_student_id }}";
+            if (preselectedStudentId) {
+                gradeSelect.value = "ALL";
+                studentSearch.placeholder = "Loading preselected student...";
+                const response = await fetch(`/api/students?grade=ALL`);
+                studentMemoryMap = await response.json();
+                
+                studentOptions.innerHTML = '';
+                studentMemoryMap.forEach(student => {
+                    const option = document.createElement('option');
+                    option.value = student.name;
+                    studentOptions.appendChild(option);
+                });
+                studentSearch.disabled = false;
+                studentSearch.classList.remove('bg-slate-100');
+                studentSearch.classList.add('bg-white');
+
+                const target = studentMemoryMap.find(s => s.id == preselectedStudentId);
+                if (target) {
+                    studentSearch.value = target.name;
+                    studentSearch.dispatchEvent(new Event('input'));
+                }
+            }
+        });
 
         gradeSelect.addEventListener('change', async function() {
             const grade = this.value;
@@ -151,6 +269,8 @@
             studentIdHidden.value = '';
             setButtonDisabled();
             statusBadgeContainer.classList.add('hidden');
+            passportSelectionContainer.classList.add('hidden');
+            checkoutDetailsContainer.classList.add('hidden');
             
             if (!grade) {
                 studentSearch.disabled = true;
@@ -181,15 +301,27 @@
             if (matched) {
                 studentIdHidden.value = matched.id;
                 statusBadgeContainer.classList.remove('hidden');
+                passportSelectionContainer.classList.remove('hidden');
                 
-                // Add graduation year stamp context if it exists
+                let pCount = matched.passport_count || 1;
+                passportCountBadge.innerText = `${pCount} Passport${pCount === 1 ? '' : 's'} Registered`;
+                passportSelection.innerHTML = '<option value="all">Use All Registered Passports</option>';
+                for (let count = 1; count <= Math.min(3, pCount); count++) {
+                    const option = document.createElement('option');
+                    option.value = String(count);
+                    option.textContent = `Use ${count} Passport${count === 1 ? '' : 's'}`;
+                    passportSelection.appendChild(option);
+                }
+                passportSelection.value = 'all';
+                passportSelectionHelp.textContent = `This student has ${pCount} registered passport${pCount === 1 ? '' : 's'}.`;
+
                 let alumniLabelSuffix = matched.graduation_year ? `Alumni (Class of ${matched.graduation_year})` : 'Secured In Safe';
 
                 if (matched.status === 'In Safe') {
                     statusBadge.className = "text-xs font-bold px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1.5";
                     statusBadge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span> ${alumniLabelSuffix}`;
                     
-                    // Passport in safe -> Action must be Out (Withdraw)
+                    // Passport in safe -> Action must be Out (Withdraw / Checkout)
                     setButtonState('Out');
                 } else {
                     statusBadge.className = "text-xs font-bold px-3 py-1.5 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 flex items-center gap-1.5";
@@ -201,6 +333,8 @@
             } else {
                 studentIdHidden.value = '';
                 statusBadgeContainer.classList.add('hidden');
+                passportSelectionContainer.classList.add('hidden');
+                checkoutDetailsContainer.classList.add('hidden');
                 setButtonDisabled();
             }
         });
@@ -213,7 +347,11 @@
             btnAction.className = "w-full flex items-center justify-center space-x-3 py-4 text-white font-bold rounded-xl text-md shadow-lg transform active:scale-[0.98] transition focus:outline-none focus:ring-2 focus:ring-offset-2";
 
             if (actionType === 'Out') {
-                // Withdraw State
+                // Withdraw / Checkout State
+                checkoutDetailsContainer.classList.remove('hidden');
+                staffMemberSelect.required = true;
+                reasonSelect.required = true;
+
                 btnText.innerText = "Withdraw from Safe";
                 btnAction.classList.add("bg-rose-600", "hover:bg-rose-700", "shadow-rose-600/10", "hover:shadow-rose-600/20", "focus:ring-rose-500");
                 btnIconContainer.innerHTML = `
@@ -223,6 +361,10 @@
                 `;
             } else {
                 // Deposit State
+                checkoutDetailsContainer.classList.add('hidden');
+                staffMemberSelect.required = false;
+                reasonSelect.required = false;
+
                 btnText.innerText = "Deposit into Safe";
                 btnAction.classList.add("bg-emerald-600", "hover:bg-emerald-700", "shadow-emerald-600/10", "hover:shadow-emerald-600/20", "focus:ring-emerald-500");
                 btnIconContainer.innerHTML = `
@@ -237,6 +379,9 @@
             btnAction.disabled = true;
             btnAction.value = "";
             btnText.innerText = "Please Select Student";
+            checkoutDetailsContainer.classList.add('hidden');
+            staffMemberSelect.required = false;
+            reasonSelect.required = false;
             btnAction.className = "w-full flex items-center justify-center space-x-3 py-4 text-slate-400 bg-slate-100 font-bold rounded-xl text-md cursor-not-allowed transition focus:outline-none";
             btnIconContainer.innerHTML = `
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -244,6 +389,23 @@
                 </svg>
             `;
         }
+
+        transactionForm.addEventListener('submit', function(e) {
+            if (btnAction.value === 'Out') {
+                if (!staffMemberSelect.value) {
+                    e.preventDefault();
+                    alert('Please select an authorized staff member before withdrawing the passport.');
+                    staffMemberSelect.focus();
+                    return false;
+                }
+                if (!reasonSelect.value) {
+                    e.preventDefault();
+                    alert('Please select a reason for checking out the passport.');
+                    reasonSelect.focus();
+                    return false;
+                }
+            }
+        });
     </script>
 </body>
 </html>

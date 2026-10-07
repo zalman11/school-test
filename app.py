@@ -5,18 +5,21 @@ import json
 import zipfile
 import webbrowser
 import threading
+import subprocess
+import time
+import re
+import shutil
+import queue
+import atexit
+import signal
+import uuid
 from datetime import datetime, timezone
 from typing import Optional, Any
-from flask import Flask, render_template, redirect, url_for, request, flash, jsonify
+from flask import Flask, render_template, redirect, url_for, request, flash, jsonify, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import select, desc
-import subprocess
-import sys
-import time
-import re
-from flask import Flask
 
 # --- PYINSTALLER PATH COMPLIANCE ---
 def get_resource_path(relative_path: str) -> str:
@@ -46,18 +49,42 @@ login_manager = LoginManager(app)
 setattr(login_manager, 'login_view', 'login')
 login_manager.login_message_category = 'warning'
 
+
+def resolve_passport_selection(selection: Optional[str], registered_count: int) -> Optional[int]:
+    """Resolve a terminal selection to a safe passport count for a student."""
+    try:
+        registered_count = max(0, int(registered_count))
+    except (TypeError, ValueError):
+        return None
+
+    normalized = (selection or '').strip().lower()
+    if normalized == 'all':
+        return registered_count or None
+    if normalized.isdigit():
+        selected_count = int(normalized)
+        if 1 <= selected_count <= 3 and selected_count <= registered_count:
+            return selected_count
+    return None
+
+
 # --- DATABASE MODELS ---
 class User(db.Model, UserMixin): # type: ignore
     __allow_unmapped__ = True
     id: Any = db.Column(db.Integer, primary_key=True)
     username: Any = db.Column(db.String(50), unique=True, nullable=False)
-    password_hash: Any = db.Column(db.String(255), nullable=False)
+    password_hash: Any = db.Column(db.String(255), nullable=True)
     role: Any = db.Column(db.String(20), nullable=False) # 'Teacher' or 'Admin'
+    setup_token: Any = db.Column(db.String(100), nullable=True)
 
-    def __init__(self, username: str, password_hash: str, role: str):
+    @property
+    def is_setup_complete(self) -> bool:
+        return bool(self.password_hash and self.password_hash.strip() and not self.setup_token)
+
+    def __init__(self, username: str, password_hash: str = "", role: str = "Teacher", setup_token: Optional[str] = None):
         self.username = username.strip()
         self.password_hash = password_hash
         self.role = role
+        self.setup_token = setup_token
 
 class SystemConfig(db.Model): # type: ignore
     __allow_unmapped__ = True
@@ -110,13 +137,15 @@ class Student(db.Model): # type: ignore
     last_moved: Any = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     last_handled_by: Any = db.Column(db.String(50), nullable=True)
     graduation_year: Any = db.Column(db.Integer, nullable=True) # Dedicated tracking column
+    passport_count: Any = db.Column(db.Integer, nullable=False, default=1)
 
-    def __init__(self, name: str, grade: str, current_status: str = 'Out of Safe', last_handled_by: Optional[str] = None, graduation_year: Optional[int] = None):
+    def __init__(self, name: str, grade: str, current_status: str = 'Out of Safe', last_handled_by: Optional[str] = None, graduation_year: Optional[int] = None, passport_count: int = 1):
         self.name = name.strip()
         self.grade = grade.strip()
         self.current_status = current_status
         self.last_handled_by = last_handled_by
         self.graduation_year = graduation_year
+        self.passport_count = passport_count if passport_count in (1, 2, 3) else 1
 
 class ArchivePeriod(db.Model): # type: ignore
     __allow_unmapped__ = True
@@ -153,12 +182,33 @@ class TransactionLog(db.Model): # type: ignore
     student_name: Any = db.Column(db.String(100), nullable=False)
     action: Any = db.Column(db.String(10), nullable=False)
     teacher_username: Any = db.Column(db.String(50), nullable=False)
+    staff_member: Any = db.Column(db.String(100), nullable=True)
+    reason: Any = db.Column(db.String(100), nullable=True)
+    passport_selection: Any = db.Column(db.String(10), nullable=True)
 
-    def __init__(self, student_id: int, student_name: str, action: str, teacher_username: str):
+    def __init__(self, student_id: int, student_name: str, action: str, teacher_username: str, staff_member: Optional[str] = None, reason: Optional[str] = None, passport_selection: Optional[str] = None):
         self.student_id = student_id
         self.student_name = student_name
         self.action = action
         self.teacher_username = teacher_username
+        self.staff_member = staff_member
+        self.reason = reason
+        self.passport_selection = passport_selection
+
+class Notification(db.Model): # type: ignore
+    __allow_unmapped__ = True
+    id: Any = db.Column(db.Integer, primary_key=True)
+    timestamp: Any = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    title: Any = db.Column(db.String(200), nullable=False)
+    message: Any = db.Column(db.Text, nullable=False)
+    recipients: Any = db.Column(db.String(200), nullable=False)
+    email_status: Any = db.Column(db.String(50), nullable=False) # 'sent via email' or 'not sent via email'
+
+    def __init__(self, title: str, message: str, recipients: str, email_status: str):
+        self.title = title
+        self.message = message
+        self.recipients = recipients
+        self.email_status = email_status
 
 @login_manager.user_loader
 def load_user(user_id: str):
@@ -166,6 +216,90 @@ def load_user(user_id: str):
 
 def verify_admin_role() -> bool:
     return current_user.is_authenticated and getattr(current_user, 'role', '') == 'Admin'
+
+# --- AUTOMATED EMAIL NOTIFICATION HELPER ---
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+def send_checkout_email_alert(student_name: str, grade: str, passport_count: int, staff_member: str, reason: str, teacher_username: str):
+    """Asynchronously dispatches an automated email alert when special checkout reasons are triggered and logs to System Inbox."""
+    def email_worker():
+        recipients = ["kklein@levhatorah.org", "amendlowitz@levhatorah.org"]
+        
+        with app.app_context():
+            server_cfg = db.session.get(SystemConfig, 'smtp_server')
+            port_cfg = db.session.get(SystemConfig, 'smtp_port')
+            user_cfg = db.session.get(SystemConfig, 'smtp_sender_email')
+            pass_cfg = db.session.get(SystemConfig, 'smtp_sender_password')
+            
+            smtp_server = server_cfg.value if server_cfg else "smtp.gmail.com"
+            try:
+                smtp_port = int(port_cfg.value) if port_cfg else 587
+            except ValueError:
+                smtp_port = 587
+            sender_email = user_cfg.value if user_cfg else ""
+            sender_password = pass_cfg.value if pass_cfg else ""
+
+        subject = f"[PASSPORT ALERT] {student_name} - Passport Checked Out ({reason})"
+        body = f"""PASSPORT SAFE TERMINAL - AUTOMATED NOTIFICATION
+
+A passport has been checked out with a flagged security/travel reason.
+
+• Student Name: {student_name}
+• Class/Group: {grade}
+• Passport Count: {passport_count}
+• Action: Withdrawn from Safe (Out)
+• Reason for Checkout: {reason}
+• Authorized Staff Member: {staff_member}
+• Logged System User: @{teacher_username}
+• Timestamp (UTC): {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')}
+
+This is an automated system alert sent to designated security contacts ({', '.join(recipients)}).
+"""
+
+        msg = MIMEMultipart()
+        msg['From'] = sender_email if sender_email else "passport-safe@levhatorah.org"
+        msg['To'] = ", ".join(recipients)
+        msg['Subject'] = subject
+        msg.attach(MIMEText(body, 'plain'))
+
+        email_sent_successfully = False
+
+        if sender_email and sender_password:
+            try:
+                with smtplib.SMTP(smtp_server, smtp_port, timeout=10) as server:
+                    server.starttls()
+                    server.login(sender_email, sender_password)
+                    server.sendmail(sender_email, recipients, msg.as_string())
+                email_sent_successfully = True
+                app.logger.info(f"Email alert sent successfully to {recipients} for {student_name}.")
+                print(f"📧 Email alert sent to {recipients} for {student_name} ({reason})")
+            except Exception as e:
+                email_sent_successfully = False
+                app.logger.error(f"Failed to send email alert via SMTP: {e}")
+                print(f"⚠️ SMTP alert dispatch error: {e}")
+        else:
+            email_sent_successfully = False
+            app.logger.info(f"SMTP credentials not configured. Email alert triggered for {student_name} ({reason}) to {recipients}.")
+            print(f"📧 [Automated Alert Triggered] To: {recipients} | Subject: {subject} | Student: {student_name}")
+
+        # Always record in Internal Inbox Notification Log (strictly internal logging, never alters or blocks emails!)
+        try:
+            with app.app_context():
+                status_tag = "sent via email" if email_sent_successfully else "not sent via email"
+                notif = Notification(
+                    title=f"Passport Alert: {student_name} ({reason})",
+                    message=f"Passport checked out for {student_name} ({grade}). Reason: {reason}. Authorized Staff Member: {staff_member}. Processed by @{teacher_username}.",
+                    recipients=", ".join(recipients),
+                    email_status=status_tag
+                )
+                db.session.add(notif)
+                db.session.commit()
+        except Exception as err:
+            app.logger.error(f"Failed to record internal inbox notification: {err}")
+
+    threading.Thread(target=email_worker, daemon=True).start()
 
 # --- DATABASE BACKUP & RESTORE UTILITIES ---
 def trigger_auto_backup() -> bool:
@@ -191,7 +325,8 @@ def trigger_auto_backup() -> bool:
                 'current_status': s.current_status,
                 'last_moved': s.last_moved.isoformat() if s.last_moved else None,
                 'last_handled_by': s.last_handled_by,
-                'graduation_year': s.graduation_year
+                'graduation_year': s.graduation_year,
+                'passport_count': s.passport_count
             } for s in students]
         }
         
@@ -257,7 +392,8 @@ def restore_from_backup_file() -> bool:
                 grade=s_data['grade'],
                 current_status=s_data.get('current_status', 'Out of Safe'),
                 last_handled_by=s_data.get('last_handled_by'),
-                graduation_year=s_data.get('graduation_year')
+                graduation_year=s_data.get('graduation_year'),
+                passport_count=s_data.get('passport_count', 1)
             )
             if last_moved:
                 student.last_moved = last_moved
@@ -274,13 +410,11 @@ def restore_from_backup_file() -> bool:
 def get_local_network_info():
     """Retrieve system hostname and active LAN IPv4 coordinates for dynamic QR configuration."""
     hostname = socket.gethostname()
-    # Safely strip local domain suffixes to isolate clean device hostnames
     if "." in hostname:
         hostname = hostname.split(".")[0]
     
     local_ip = "127.0.0.1"
     try:
-        # Create a dummy socket to find active routing interfaces
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(("8.8.8.8", 80))
         local_ip = s.getsockname()[0]
@@ -304,11 +438,9 @@ def process_automated_rollover(task: ScheduledRollover):
         db.session.commit()
         return
 
-    # Fetch dynamic bounds
     max_level_str = db.session.get(SystemConfig, 'end_grade_level')
     max_level = int(max_level_str.value) if max_level_str else 12
 
-    # Initialize dynamic snapshot log container
     period_label = f"Auto-Archive: {task.label} ({datetime.now(timezone.utc).strftime('%Y-%m-%d')})"
     period = ArchivePeriod(label=period_label)
     db.session.add(period)
@@ -324,7 +456,6 @@ def process_automated_rollover(task: ScheduledRollover):
         )
         db.session.add(archived)
         
-        # Advance student
         try:
             cleaned = student.grade.replace("Grade", "").strip()
             num_str = "".join([c for c in cleaned if c.isdigit()])
@@ -343,7 +474,6 @@ def process_automated_rollover(task: ScheduledRollover):
             student.grade = "Graduated"
             student.graduation_year = current_year
 
-    # Handle recurrence metrics
     if task.recurrence == 'yearly':
         try:
             task.target_date = task.target_date.replace(year=task.target_date.year + 1)
@@ -357,7 +487,6 @@ def process_automated_rollover(task: ScheduledRollover):
 
 @app.before_request
 def check_scheduled_rollovers():
-    """Checked automatically on incoming user activity without background thread bottlenecks"""
     if request.endpoint in ['static', 'get_resource_path']:
         return
     try:
@@ -370,30 +499,26 @@ def check_scheduled_rollovers():
         for rollover in pending_rollovers:
             process_automated_rollover(rollover)
     except Exception:
-        pass # Protect route loading in case database tables are pending creation
+        pass
 
 @app.before_request
 def check_setup_redirect():
-    """Redirects user to the setup wizard if the system has no admin account configured."""
     if request.endpoint in ['static', 'setup'] or request.path.startswith('/static'):
         return
     try:
-        # Check if database has any Admin user
         admin_exists = db.session.scalar(select(User).filter_by(role='Admin'))
         if not admin_exists:
             return redirect(url_for('setup'))
     except Exception:
-        pass # Protect in case tables do not exist yet
+        pass
 
 # --- DATABASE SEED ENGINE & MIGRATION HELPER ---
 with app.app_context():
     db.create_all()
     
-    # Simple migration helper to dynamically handle model upgrades for local desktop deployments
     from sqlalchemy import inspect
     inspector = inspect(db.engine)
     
-    # 1. Migrate grade_config Table
     if 'grade_config' in inspector.get_table_names():
         columns = [c['name'] for c in inspector.get_columns('grade_config')]
         if 'custom_display_name' not in columns:
@@ -403,7 +528,6 @@ with app.app_context():
             except Exception:
                 db.session.rollback()
 
-    # 2. Migrate student Table (Add graduation_year field if missing)
     if 'student' in inspector.get_table_names():
         columns = [c['name'] for c in inspector.get_columns('student')]
         if 'graduation_year' not in columns:
@@ -412,17 +536,60 @@ with app.app_context():
                 db.session.commit()
             except Exception:
                 db.session.rollback()
+        if 'passport_count' not in columns:
+            try:
+                db.session.execute(db.text("ALTER TABLE student ADD COLUMN passport_count INTEGER NOT NULL DEFAULT 1"))
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
 
-    # Ensure system configs are present
+    if 'transaction_log' in inspector.get_table_names():
+        columns = [c['name'] for c in inspector.get_columns('transaction_log')]
+        if 'staff_member' not in columns:
+            try:
+                db.session.execute(db.text("ALTER TABLE transaction_log ADD COLUMN staff_member VARCHAR(100)"))
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+        if 'reason' not in columns:
+            try:
+                db.session.execute(db.text("ALTER TABLE transaction_log ADD COLUMN reason VARCHAR(100)"))
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+        if 'passport_selection' not in columns:
+            try:
+                db.session.execute(db.text("ALTER TABLE transaction_log ADD COLUMN passport_selection VARCHAR(10)"))
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+
+    if 'user' in inspector.get_table_names():
+        columns = [c['name'] for c in inspector.get_columns('user')]
+        if 'setup_token' not in columns:
+            try:
+                db.session.execute(db.text("ALTER TABLE user ADD COLUMN setup_token VARCHAR(100)"))
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+
     if not db.session.get(SystemConfig, 'start_grade_level'):
         db.session.add(SystemConfig(key='start_grade_level', value='8'))
     if not db.session.get(SystemConfig, 'end_grade_level'):
         db.session.add(SystemConfig(key='end_grade_level', value='12'))
     if not db.session.get(SystemConfig, 'auto_backup_enabled'):
         db.session.add(SystemConfig(key='auto_backup_enabled', value='true'))
+    if not db.session.get(SystemConfig, 'cloudflare_enabled'):
+        db.session.add(SystemConfig(key='cloudflare_enabled', value='false'))
+    
+    # Seed default teacher accounts automatically
+    default_teachers = ["Keren Klein", "Gavri Leichter", "Tova Stross", "Ariella Mendlowitz", "Rav Cytrin", "Madrich"]
+    for t_name in default_teachers:
+        if not db.session.scalar(select(User).filter_by(username=t_name)):
+            db.session.add(User(username=t_name, password_hash="", role="Teacher", setup_token=uuid.uuid4().hex))
+    db.session.commit()
     
     if not db.session.scalar(select(User)):
-        # Check if backup file exists and load it to restore accidentally wiped DB
         restored = False
         if os.path.exists(backup_zip_path):
             try:
@@ -448,13 +615,13 @@ with app.app_context():
                         grade=s_data['grade'],
                         current_status=s_data.get('current_status', 'Out of Safe'),
                         last_handled_by=s_data.get('last_handled_by'),
-                        graduation_year=s_data.get('graduation_year')
+                        graduation_year=s_data.get('graduation_year'),
+                        passport_count=s_data.get('passport_count', 1)
                     )
                     if last_moved:
                         student.last_moved = last_moved
                     db.session.add(student)
                 
-                # Re-seed configs
                 db.session.add(SystemConfig(key='auto_backup_enabled', value='true'))
                 db.session.commit()
                 restored = True
@@ -472,7 +639,7 @@ def login():
         username = (request.form.get('username') or '').strip()
         password = request.form.get('password') or ''
         user = db.session.scalar(select(User).filter_by(username=username))
-        if user and check_password_hash(user.password_hash, password):
+        if user and user.password_hash and check_password_hash(user.password_hash, password):
             login_user(user)
             return redirect(url_for('index'))
         flash('Invalid verification credentials.', 'danger')
@@ -485,58 +652,132 @@ def logout():
     return redirect(url_for('login'))
 
 @app.route('/')
-@login_required
 def index():
     configs = db.session.scalars(select(GradeConfig).order_by(GradeConfig.level, GradeConfig.track)).all()
     grades = [c.display_name for c in configs]
-    return render_template('index.html', grades=grades)
+    selected_student_id = request.args.get('student_id', '')
+
+    detected_teacher = getattr(current_user, 'username', '') if current_user.is_authenticated else ''
+    session_teacher = session.get('teacher_alias') or request.cookies.get('teacher_alias') or ''
+    if not detected_teacher or detected_teacher == 'System':
+        detected_teacher = session_teacher
+
+    teachers = db.session.scalars(select(User).filter_by(role='Teacher').order_by(User.username)).all()
+    teacher_options = [u.username for u in teachers]
+
+    return render_template('index.html', 
+                           grades=grades, 
+                           selected_student_id=selected_student_id, 
+                           detected_teacher=detected_teacher,
+                           teacher_options=teacher_options)
+
+@app.route('/set-teacher-session', methods=['POST'])
+def set_teacher_session():
+    teacher_alias = (request.form.get('teacher_alias') or '').strip()
+    if teacher_alias:
+        session['teacher_alias'] = teacher_alias
+        response = redirect(request.referrer or url_for('index'))
+        response.set_cookie('teacher_alias', teacher_alias, max_age=30*86400)
+        flash(f"Active staff identity set to @{teacher_alias}.", 'success')
+        return response
+    return redirect(url_for('index'))
+
+@app.route('/teacher-setup/<token>', methods=['GET', 'POST'])
+def teacher_setup(token: str):
+    user = db.session.scalar(select(User).filter_by(setup_token=token))
+    if not user:
+        flash("Invalid, expired, or previously completed teacher setup link.", "danger")
+        return redirect(url_for('login'))
+        
+    if request.method == 'POST':
+        password = request.form.get('password') or ''
+        confirm_password = request.form.get('confirm_password') or ''
+        if not password or len(password) < 4:
+            flash("Password must be at least 4 characters long.", "danger")
+        elif password != confirm_password:
+            flash("Passwords do not match.", "danger")
+        else:
+            user.password_hash = generate_password_hash(password)
+            user.setup_token = None
+            db.session.commit()
+            trigger_auto_backup()
+            flash(f"Account setup complete for @{user.username}! You may now log in.", "success")
+            return redirect(url_for('login'))
+            
+    return render_template('teacher_setup.html', user=user, token=token)
 
 @app.route('/api/students')
 @login_required
 def get_students_by_grade():
     grade = request.args.get('grade')
     if not grade or grade.upper() == 'ALL':
-        # Enrolled Students (excluding Graduated completely)
         stmt = select(Student).filter(Student.grade != 'Graduated').order_by(Student.name)
     elif grade == 'Graduated':
-        # Retrieve exclusively graduated students who STILL have passports inside the safe!
         stmt = select(Student).filter_by(grade='Graduated', current_status='In Safe').order_by(Student.name)
     else:
-        # Enrolled Students belonging to a specific selected active grade
         stmt = select(Student).filter_by(grade=grade).order_by(Student.name)
     students = db.session.scalars(stmt).all()
     return jsonify([{
         'id': s.id, 
         'name': s.name, 
         'status': s.current_status,
-        'graduation_year': s.graduation_year
+        'graduation_year': s.graduation_year,
+        'passport_count': s.passport_count
     } for s in students])
 
 @app.route('/transaction', methods=['POST'])
-@login_required
 def handle_transaction():
     student_id = request.form.get('student_id')
     action_type = request.form.get('action')
+    staff_member = (request.form.get('staff_member') or '').strip()
+    reason = (request.form.get('reason') or '').strip()
+    passport_selection = request.form.get('passport_selection', 'all').strip().lower()
+
     if not student_id or not action_type:
         return redirect(url_for('index'))
     
     student = db.session.get(Student, int(student_id))
     if student:
+        selected_passport_count = resolve_passport_selection(passport_selection, student.passport_count)
+        if selected_passport_count is None:
+            flash("The selected passport quantity is not available for this student.", 'danger')
+            return redirect(url_for('index'))
+
         status_map = {'In': 'In Safe', 'Out': 'Out of Safe'}
         student.current_status = status_map[action_type]
         student.last_moved = datetime.now(timezone.utc)
-        student.last_handled_by = getattr(current_user, 'username', 'System')
         
+        fallback_teacher = session.get('teacher_alias') or request.cookies.get('teacher_alias') or 'Guest'
+        handler_name = staff_member if staff_member else (str(getattr(current_user, 'username', '')) if current_user.is_authenticated else fallback_teacher)
+        student.last_handled_by = handler_name
+        
+        logged_user = str(getattr(current_user, 'username', '')) if current_user.is_authenticated else fallback_teacher
         log = TransactionLog(
             student_id=student.id,
             student_name=student.name,
             action=action_type,
-            teacher_username=str(getattr(current_user, 'username', 'System'))
+            teacher_username=logged_user,
+            staff_member=staff_member if staff_member else None,
+            reason=reason if reason else None,
+            passport_selection=str(selected_passport_count) if passport_selection != 'all' else 'all'
         )
         db.session.add(log)
         db.session.commit()
         trigger_auto_backup()
-        flash(f"Updated status for {student.name}.", 'success')
+
+        alert_reasons = ["Travel In Israel", "Travel Outside of Israel", "Leaving the Yeshiva"]
+        if action_type == 'Out' and reason in alert_reasons:
+            send_checkout_email_alert(
+                student_name=student.name,
+                grade=student.grade,
+                passport_count=selected_passport_count,
+                staff_member=handler_name,
+                reason=reason,
+                teacher_username=logged_user
+            )
+            flash(f"Updated status for {student.name}. Automated email alert dispatched to kklein@levhatorah.org & amendlowitz@levhatorah.org.", 'warning')
+        else:
+            flash(f"Updated status for {student.name}.", 'success')
     return redirect(url_for('index'))
 
 @app.route('/dashboard')
@@ -545,34 +786,51 @@ def dashboard():
     students = db.session.scalars(select(Student).order_by(Student.name)).all()
     logs = db.session.scalars(select(TransactionLog).order_by(desc(TransactionLog.timestamp))).all()
     archive_periods = db.session.scalars(select(ArchivePeriod).order_by(desc(ArchivePeriod.archived_at))).all()
-    return render_template('dashboard.html', students=students, logs=logs, archive_periods=archive_periods)
+    configs = db.session.scalars(select(GradeConfig).order_by(GradeConfig.level, GradeConfig.track)).all()
+    grades = [c.display_name for c in configs]
+    notifications = db.session.scalars(select(Notification).order_by(desc(Notification.timestamp))).all()
+    return render_template('dashboard.html', 
+                           students=students, 
+                           logs=logs, 
+                           archive_periods=archive_periods, 
+                           grades=grades,
+                           notifications=notifications)
 
 @app.route('/settings')
 @login_required
 def settings():
     if not verify_admin_role():
-        return "Unauthorized", 403
+        flash("Access denied. Admin privileges required.", "danger")
+        return redirect(url_for('dashboard'))
     teachers = db.session.scalars(select(User).filter(User.username != current_user.username)).all()
     students = db.session.scalars(select(Student).filter(Student.grade != 'Graduated').order_by(Student.grade, Student.name)).all()
     graduates = db.session.scalars(select(Student).filter(Student.grade == 'Graduated').order_by(Student.name)).all()
     grade_configs = db.session.scalars(select(GradeConfig).order_by(GradeConfig.level, GradeConfig.track)).all()
     
-    # Get configuration bounds
     start_grade = db.session.get(SystemConfig, 'start_grade_level')
     end_grade = db.session.get(SystemConfig, 'end_grade_level')
     start_val = start_grade.value if start_grade else "8"
     end_val = end_grade.value if end_grade else "12"
 
-    # Fetch active scheduled tasks
     scheduled_rollovers = db.session.scalars(select(ScheduledRollover).order_by(ScheduledRollover.target_date)).all()
-
-    # Get local active network parameters (hostnames, IP values) for printing QR labels
     hostname, local_ip = get_local_network_info()
 
-    # Auto-backup configuration state
     auto_backup_cfg = db.session.get(SystemConfig, 'auto_backup_enabled')
     auto_backup_enabled = auto_backup_cfg.value if auto_backup_cfg else 'true'
     backup_exists = os.path.exists(backup_zip_path)
+
+    smtp_server_cfg = db.session.get(SystemConfig, 'smtp_server')
+    smtp_port_cfg = db.session.get(SystemConfig, 'smtp_port')
+    smtp_email_cfg = db.session.get(SystemConfig, 'smtp_sender_email')
+    smtp_pass_cfg = db.session.get(SystemConfig, 'smtp_sender_password')
+    
+    smtp_server = smtp_server_cfg.value if smtp_server_cfg else ''
+    smtp_port = smtp_port_cfg.value if smtp_port_cfg else '587'
+    smtp_email = smtp_email_cfg.value if smtp_email_cfg else ''
+    smtp_pass = smtp_pass_cfg.value if smtp_pass_cfg else ''
+
+    cf_cfg = db.session.get(SystemConfig, 'cloudflare_enabled')
+    cloudflare_enabled = cf_cfg.value if cf_cfg else 'false'
 
     return render_template('settings.html', 
                            teachers=teachers, 
@@ -585,7 +843,100 @@ def settings():
                            hostname=hostname,
                            local_ip=local_ip,
                            auto_backup_enabled=auto_backup_enabled,
-                           backup_exists=backup_exists)
+                           backup_exists=backup_exists,
+                           smtp_server=smtp_server,
+                           smtp_port=smtp_port,
+                           smtp_email=smtp_email,
+                           smtp_pass=smtp_pass,
+                           cloudflare_enabled=cloudflare_enabled,
+                           tunnel_url=tunnel_url)
+
+@app.route('/settings/set-user-password/<int:user_id>', methods=['POST'])
+@login_required
+def set_user_password(user_id: int):
+    if not verify_admin_role(): return "Unauthorized", 403
+    user = db.session.get(User, user_id)
+    if user:
+        password = request.form.get('password') or ''
+        if len(password) < 4:
+            flash("Password must be at least 4 characters long.", "danger")
+        else:
+            user.password_hash = generate_password_hash(password)
+            user.setup_token = None
+            db.session.commit()
+            trigger_auto_backup()
+            flash(f"Password updated for @{user.username}.", "success")
+    return redirect(url_for('settings'))
+
+@app.route('/settings/generate-setup-token/<int:user_id>', methods=['POST'])
+@login_required
+def generate_setup_token(user_id: int):
+    if not verify_admin_role(): return "Unauthorized", 403
+    user = db.session.get(User, user_id)
+    if user:
+        user.password_hash = ""
+        user.setup_token = uuid.uuid4().hex
+        db.session.commit()
+        trigger_auto_backup()
+        flash(f"Generated new setup URL for @{user.username}.", "success")
+    return redirect(url_for('settings'))
+
+@app.route('/settings/toggle-cloudflare', methods=['POST'])
+@login_required
+def toggle_cloudflare():
+    if not verify_admin_role(): return "Unauthorized", 403
+    global tunnel_process, tunnel_url
+    
+    cfg = db.session.get(SystemConfig, 'cloudflare_enabled')
+    current_val = cfg.value if cfg else 'false'
+    new_val = 'false' if current_val == 'true' else 'true'
+    
+    if not cfg:
+        db.session.add(SystemConfig(key='cloudflare_enabled', value=new_val))
+    else:
+        cfg.value = new_val
+    db.session.commit()
+    
+    if new_val == 'true':
+        if not tunnel_process or tunnel_process.poll() is not None:
+            threading.Thread(target=start_automatic_tunnel, args=(5000,), daemon=True).start()
+        flash("Cloudflare Tunnel ENABLED. Public URL generated.", "success")
+    else:
+        if tunnel_process and tunnel_process.poll() is None:
+            try:
+                tunnel_process.terminate()
+            except Exception:
+                pass
+            tunnel_process = None
+        tunnel_url = "http://127.0.0.1:5000/"
+        flash("Cloudflare Tunnel DISABLED.", "warning")
+        
+    return redirect(url_for('settings'))
+
+@app.route('/settings/update-email-config', methods=['POST'])
+@login_required
+def update_email_config():
+    if not verify_admin_role(): return "Unauthorized", 403
+    server = (request.form.get('smtp_server') or '').strip()
+    port = (request.form.get('smtp_port') or '').strip()
+    sender_email = (request.form.get('smtp_sender_email') or '').strip()
+    sender_password = request.form.get('smtp_sender_password') or ''
+
+    for key, val in [
+        ('smtp_server', server),
+        ('smtp_port', port),
+        ('smtp_sender_email', sender_email),
+        ('smtp_sender_password', sender_password)
+    ]:
+        cfg = db.session.get(SystemConfig, key)
+        if not cfg:
+            db.session.add(SystemConfig(key=key, value=val))
+        else:
+            cfg.value = val
+
+    db.session.commit()
+    flash("SMTP email notification configuration saved.", "success")
+    return redirect(url_for('settings'))
 
 @app.route('/settings/update-bounds', methods=['POST'])
 @login_required
@@ -607,7 +958,6 @@ def update_bounds():
                 cfg_end.value = str(end_val)
                 db.session.add_all([cfg_start, cfg_end])
                 
-                # Auto-populate all grades sequentially in range with empty track splits
                 created_grades = []
                 for lvl in range(start_val, end_val + 1):
                     exists = db.session.scalar(select(GradeConfig).filter_by(level=lvl, track=""))
@@ -635,7 +985,6 @@ def edit_grade(grade_id: int):
         new_name = request.form.get('new_name', '').strip()
         if new_name:
             cfg.custom_display_name = new_name
-            # Cascading dynamic update on student active records to prevent directory mismatches
             students_to_update = db.session.scalars(select(Student).filter_by(grade=old_display_name)).all()
             for s in students_to_update:
                 s.grade = new_name
@@ -658,7 +1007,6 @@ def split_class():
         flash("Split failed. Specify target tracks and check students.", "danger")
         return redirect(url_for('settings'))
 
-    # Determine original configuration scope to extract level
     src_cfg = db.session.scalar(select(GradeConfig).filter(
         (GradeConfig.custom_display_name == source_grade) | 
         (GradeConfig.track == source_grade)
@@ -668,13 +1016,11 @@ def split_class():
     if src_cfg:
         level = src_cfg.level
     else:
-        # Fallback manual numeric parser
         cleaned = source_grade.replace("Grade", "").strip()
         num_str = "".join([c for c in cleaned if c.isdigit()])
         if num_str:
             level = int(num_str)
 
-    # Check/Create destination category
     dest_cfg = db.session.scalar(select(GradeConfig).filter_by(level=level, track=dest_track))
     if not dest_cfg:
         dest_cfg = GradeConfig(level=level, track=dest_track)
@@ -683,7 +1029,6 @@ def split_class():
 
     dest_display_name = dest_cfg.display_name
 
-    # Move selected students
     moved_count = 0
     for sid_str in student_ids:
         sid = int(sid_str)
@@ -773,14 +1118,23 @@ def add_teacher():
     username = (request.form.get('username') or '').strip()
     password = request.form.get('password') or ''
     role = request.form.get('role') or 'Teacher'
-    if username and password:
+    if username:
         if db.session.scalar(select(User).filter_by(username=username)):
             flash('Error: Identity alias already exists.', 'danger')
         else:
-            db.session.add(User(username=username, password_hash=generate_password_hash(password), role=role))
+            if password:
+                pwd_hash = generate_password_hash(password)
+                token = None
+                flash_msg = f"Account for '{username}' created with configured password."
+            else:
+                pwd_hash = ""
+                token = uuid.uuid4().hex
+                flash_msg = f"Account for '{username}' initialized. Setup link generated!"
+            
+            db.session.add(User(username=username, password_hash=pwd_hash, role=role, setup_token=token))
             db.session.commit()
             trigger_auto_backup()
-            flash(f"Account for '{username}' created.", 'success')
+            flash(flash_msg, 'success')
     return redirect(url_for('settings'))
 
 @app.route('/settings/delete-user/<int:user_id>', methods=['POST'])
@@ -801,14 +1155,36 @@ def bulk_enroll():
     if not verify_admin_role(): return "Unauthorized", 403
     grade = (request.form.get('grade') or '').strip()
     raw_names = request.form.get('names_list') or ''
+    try:
+        passport_count = int(request.form.get('passport_count') or 1)
+    except ValueError:
+        passport_count = 1, 3
+    if passport_count not in (1, 2):
+        passport_count = 1
     if not grade or not raw_names: return redirect(url_for('settings'))
     
     names = [n.strip() for n in raw_names.split('\n') if n.strip()]
     for name in names:
-        db.session.add(Student(name=name, grade=grade))
+        db.session.add(Student(name=name, grade=grade, passport_count=passport_count))
     db.session.commit()
     trigger_auto_backup()
     flash(f"Enrolled {len(names)} profiles under category context '{grade}'.", "success")
+    return redirect(url_for('settings'))
+
+@app.route('/settings/update-passport-count/<int:student_id>', methods=['POST'])
+@login_required
+def update_passport_count(student_id: int):
+    if not verify_admin_role(): return "Unauthorized", 403
+    student = db.session.get(Student, student_id)
+    try:
+        passport_count = int(request.form.get('passport_count') or 1)
+    except ValueError:
+        passport_count = 1
+    if student and passport_count in (1, 2, 3):
+        student.passport_count = passport_count
+        db.session.commit()
+        trigger_auto_backup()
+        flash(f"Updated passport count for {student.name}.", 'success')
     return redirect(url_for('settings'))
 
 @app.route('/settings/remove-student/<int:student_id>', methods=['POST'])
@@ -881,7 +1257,6 @@ def advance_year():
 
 @app.route('/setup', methods=['GET', 'POST'])
 def setup():
-    # If the system is already initialized with an Admin user, do not allow setup
     try:
         admin_exists = db.session.scalar(select(User).filter_by(role='Admin'))
         if admin_exists:
@@ -893,7 +1268,6 @@ def setup():
     backup_exists = os.path.exists(backup_zip_path)
     
     if request.method == 'POST':
-        # Check if they opted for Restore from Backup
         if request.form.get('restore') == 'true':
             if restore_from_backup_file():
                 flash("Database successfully restored from passport_tracker_backup.zip! Log in with your previous credentials.", "success")
@@ -902,7 +1276,6 @@ def setup():
                 flash("Restore failed. Please verify the backup file exists and is not corrupted.", "danger")
                 return redirect(url_for('setup'))
         
-        # Fresh setup
         username = (request.form.get('username') or '').strip()
         password = request.form.get('password') or ''
         start_grade_str = request.form.get('start_grade') or '8'
@@ -924,26 +1297,21 @@ def setup():
             return redirect(url_for('setup'))
             
         try:
-            # Create user
             admin = User(username=username, password_hash=generate_password_hash(password), role="Admin")
             db.session.add(admin)
             
-            # Save system configurations
             cfg_start = SystemConfig(key='start_grade_level', value=str(start_val))
             cfg_end = SystemConfig(key='end_grade_level', value=str(end_val))
             cfg_backup = SystemConfig(key='auto_backup_enabled', value='true' if auto_backup else 'false')
             db.session.add_all([cfg_start, cfg_end, cfg_backup])
             
-            # Sequentially create gradeconfigs in range
             for lvl in range(start_val, end_val + 1):
                 db.session.add(GradeConfig(level=lvl, track=""))
                 
             db.session.commit()
             
-            # Log in newly created administrator
             login_user(admin)
             
-            # Trigger initial backup if enabled
             if auto_backup:
                 trigger_auto_backup()
                 
@@ -1062,63 +1430,143 @@ def factory_reset():
         flash(f"Error during factory reset: {str(e)}", "danger")
         return redirect(url_for('settings'))
 
-def open_browser():
-    """Wait briefly for server spinup, then automatically trigger default local browser window."""
-    try:
-        webbrowser.open("http://127.0.0.1:5000/")
-    except Exception:
-        pass
+# Global trackers for the thread-based background processes
+tunnel_url = "http://127.0.0.1:5000/"
+tunnel_process = None
 
-
-
+# --- AUTOMATIC OPTIMIZED CLOUDFLARE TUNNEL (UBUNTU & PYINSTALLER SAFED) ---
 def start_automatic_tunnel(port=5000):
-    print("⚡ Preparing Cloudflare Tunnel...")
+    import sys
+    import os
+    import re
+    import time
+    import subprocess
+    import webbrowser
+    import threading
+    import queue
+    import atexit
+    import signal
+    import shutil
+
+    global tunnel_url, tunnel_process
+    print("⚡ Preparing Cloudflare Tunnel on Ubuntu...")
     
-    # This automatically finds or downloads the cloudflared executable file
-    # across Windows, Mac, or Linux systems.
-    cloudflared_cmd = [sys.executable, "-m", "pycloudflared", "tunnel", "--url", f"http://127.0.0.1:{port}"]
+    # 1. Determine execution Command
+    system_binary = shutil.which("cloudflared")
+    if system_binary:
+        cloudflared_cmd = [system_binary, "tunnel", "--url", f"http://127.0.0.1:{port}"]
+        print(f"✅ Found system-native binary: {system_binary}")
+    else:
+        is_frozen = getattr(sys, 'frozen', False)
+        if is_frozen:
+            python_bin = shutil.which("python3") or shutil.which("python") or "python3"
+            cloudflared_cmd = [python_bin, "-m", "pycloudflared", "tunnel", "--url", f"http://127.0.0.1:{port}"]
+            print(f"⚡ App is Frozen. Invoking module fallback via: {python_bin}")
+        else:
+            cloudflared_cmd = [sys.executable, "-m", "pycloudflared", "tunnel", "--url", f"http://127.0.0.1:{port}"]
+            print("⚡ Running cloudflared via Python environment...")
+
+    # 2. Force immediate stdout logs on Ubuntu
+    env = os.environ.copy()
+    env["PYTHONUNBUFFERED"] = "1"
     
-    process = subprocess.Popen(
-        cloudflared_cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        bufsize=1
-    )
+    try:
+        process = subprocess.Popen(
+            cloudflared_cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+            env=env
+        )
+        tunnel_process = process
+    except Exception as e:
+        print(f"❌ Failed to boot up Cloudflare subprocess: {e}")
+        print("💡 Recommendation: Install Cloudflare natively on Ubuntu: 'sudo apt install cloudflared'")
+        return None
+
+    # 3. Secure atexit hook to terminate subprocess cleanly on exit (Avoid Zombie tasks on Ubuntu)
+    def cleanup():
+        global tunnel_process
+        if tunnel_process and tunnel_process.poll() is None:
+            print("\n🛑 Shutting down Cloudflare Tunnel service...")
+            try:
+                tunnel_process.send_signal(signal.SIGINT)
+                try:
+                    tunnel_process.wait(timeout=3)
+                except subprocess.TimeoutExpired:
+                    tunnel_process.kill()
+                    tunnel_process.wait()
+                print("✅ Service detached.")
+            except Exception:
+                pass
+    atexit.register(cleanup)
+
+    # 4. Read stdout using a Thread-safe Queue to prevent Python's readline from freezing on Linux
+    io_queue = queue.Queue()
     
-    # Read the terminal output to extract the random URL
-    for _ in range(40): 
-        line = process.stdout.readline()
-        if not line:
+    def enqueue_output(out, q):
+        try:
+            for line in iter(out.readline, ''):
+                if not line:
+                    break
+                q.put(line)
+        except Exception:
+            pass
+        finally:
+            out.close()
+
+    io_thread = threading.Thread(target=enqueue_output, args=(process.stdout, io_queue))
+    io_thread.daemon = True
+    io_thread.start()
+
+    # 5. Extract Dynamic URL
+    for i in range(300): # Allow ~60 seconds max loop margin
+        if process.poll() is not None:
+            print("❌ Cloudflare subprocess exited prematurely.")
             break
-        # Search the logs for the .trycloudflare.com string
-        match = re.search(r"https://[a-zA-Z0-9-]+\.trycloudflare\.com", line)
-        if match:
-            print("\n" + "="*60)
-            print(f"🔗 PUBLIC HTTPS LINK: {match.group(0)}")
-            print("="*60 + "\n")
-            return process
+            
+        # Extract lines from asynchronous queue
+        while not io_queue.empty():
+            try:
+                line = io_queue.get_nowait()
+                clean_line = line.strip()
+                
+                # Stream logs so you can see downloader metrics or diagnostic errors!
+                print(f"   [cloudflared] {clean_line}")
+
+                match = re.search(r"https://[a-zA-Z0-9-]+\.trycloudflare\.com", clean_line)
+                if match:
+                    tunnel_url = match.group(0)
+                    print("\n" + "="*60)
+                    print(f"🔗 PUBLIC HTTPS LINK GENERATED: {tunnel_url}")
+                    print("="*60 + "\n")
+                    return process
+            except queue.Empty:
+                break
+                
         time.sleep(0.2)
         
-    print("⚠️ Tunnel started, check console logs for URL.")
+    print("⚠️ Tunnel initialization timed out. No domain resolved.")
     return process
 
+
 if __name__ == '__main__':
-    # 1. Boot up the auto-downloading tunnel
-    tunnel_process = start_automatic_tunnel(port=5000)
+    # Start Cloudflare tunnel ONLY if enabled in settings
+    with app.app_context():
+        cfg = db.session.get(SystemConfig, 'cloudflare_enabled')
+        if cfg and cfg.value == 'true':
+            tunnel_thread = threading.Thread(target=start_automatic_tunnel, args=(5000,), daemon=True)
+            tunnel_thread.start()
     
     try:
-        # 2. Run your Flask app
-        threading.Timer(1.5, open_browser).start()
+        # Fire up local Flask web service
         app.run(host='0.0.0.0', port=5000, debug=False)
     finally:
-        # 3. Clean up when finished
         print("\n🛑 Closing background tunnel...")
-        if 'tunnel_process' in locals():
-            tunnel_process.terminate()
-
-
-"""if __name__ == '__main__':
-    # Listen on all network interfaces so other local devices can access the server
-    threading.Timer(1.5, open_browser).start()
-    app.run(host='0.0.0.0', port=5000, debug=False)"""
+        if 'tunnel_process' in locals() and tunnel_process is not None:
+            try:
+                tunnel_process.terminate()
+                tunnel_process.wait(timeout=2)
+            except Exception:
+                pass
