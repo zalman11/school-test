@@ -74,6 +74,31 @@ def _github_api_request(url: str, token: Optional[str] = None) -> dict:
         raise RuntimeError(f"GitHub API request failed: {exc}") from exc
 
 
+def _version_tuple(version: str) -> tuple[int, ...]:
+    """Convert a release tag such as v1.0.4 into comparable numeric parts."""
+    normalized = version.strip().lstrip('vV')
+    parts = normalized.split('.')
+    if not parts or not all(part.isdigit() for part in parts):
+        raise ValueError(f"Invalid version: {version}")
+    return tuple(int(part) for part in parts)
+
+
+def is_newer_release(current_version: str, latest_version: str) -> bool:
+    """Return whether latest_version is newer than current_version."""
+    current = _version_tuple(current_version)
+    latest = _version_tuple(latest_version)
+    return latest > current
+
+
+def get_latest_release() -> dict:
+    """Retrieve the latest GitHub release metadata."""
+    repository = os.environ.get("GITHUB_REPOSITORY", "zalman11/school-test")
+    return _github_api_request(
+        f"https://api.github.com/repos/{repository}/releases/latest",
+        os.environ.get("GITHUB_TOKEN"),
+    )
+
+
 def download_latest_release_asset(
     repository: str,
     asset_name: str,
@@ -171,6 +196,8 @@ app = Flask(
     template_folder=get_resource_path('templates'),
     static_folder=get_resource_path('static')
 )
+
+APP_VERSION = os.environ.get('APP_VERSION', '1.0.4')
 
 app.config['SECRET_KEY'] = 'super-secret-school-key-change-this'
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
@@ -939,6 +966,33 @@ def dashboard():
                            archive_periods=archive_periods, 
                            grades=grades,
                            notifications=notifications)
+
+@app.route('/api/update/check', methods=['GET'])
+@login_required
+def check_for_updates():
+    if not verify_admin_role():
+        return jsonify({"error": "Admin privileges required."}), 403
+
+    try:
+        release = get_latest_release()
+        latest_version = release.get('tag_name', '')
+        update_available = is_newer_release(APP_VERSION, latest_version)
+        return jsonify({
+            "current_version": APP_VERSION,
+            "latest_version": latest_version,
+            "update_available": update_available,
+            "message": (
+                f"Updates found: {latest_version} is available."
+                if update_available
+                else f"You are already up to date at {APP_VERSION}."
+            ),
+        })
+    except (RuntimeError, ValueError) as exc:
+        return jsonify({
+            "error": f"Unable to check for updates: {exc}",
+            "update_available": False,
+        }), 503
+
 
 @app.route('/api/update', methods=['POST'])
 @login_required

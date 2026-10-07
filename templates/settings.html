@@ -874,13 +874,16 @@
                         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                             <div>
                                 <h4 class="text-xs font-bold text-indigo-950">Application Update</h4>
-                                <p class="text-[11px] text-indigo-800/80 mt-1">Download the newest GitHub Release executable and restart this application after replacement.</p>
+                                <p class="text-[11px] text-indigo-800/80 mt-1">Check GitHub Releases for a newer executable before updating.</p>
                             </div>
                             <button id="updateButton" type="button" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-xs transition shadow-sm">
-                                Update Now
+                                Check for Updates
                             </button>
                         </div>
                         <p id="updateStatus" class="text-[10px] font-medium text-indigo-700 hidden" role="status"></p>
+                        <button id="installUpdateButton" type="button" class="hidden px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs transition shadow-sm">
+                            Update Now
+                        </button>
                     </div>
 
                     <!-- Auto-Backup Configuration -->
@@ -1075,11 +1078,40 @@
 
         document.getElementById('updateButton').addEventListener('click', async () => {
             const button = document.getElementById('updateButton');
+            const installButton = document.getElementById('installUpdateButton');
+            const status = document.getElementById('updateStatus');
+            button.disabled = true;
+            button.textContent = 'Checking...';
+            installButton.classList.add('hidden');
+            status.classList.remove('hidden');
+            status.textContent = 'Checking GitHub Releases for the latest executable...';
+
+            try {
+                const response = await fetch('{{ url_for("check_for_updates") }}');
+                const result = await response.json();
+                if (!response.ok) {
+                    throw new Error(result.error || 'Update check failed.');
+                }
+
+                button.textContent = 'Check for Updates';
+                button.disabled = false;
+                status.textContent = result.message;
+                if (result.update_available) {
+                    installButton.classList.remove('hidden');
+                    installButton.textContent = `Update to ${result.latest_version}`;
+                }
+            } catch (error) {
+                status.textContent = error.message;
+                button.disabled = false;
+            }
+        });
+
+        document.getElementById('installUpdateButton').addEventListener('click', async () => {
+            const button = document.getElementById('installUpdateButton');
             const status = document.getElementById('updateStatus');
             button.disabled = true;
             button.textContent = 'Updating...';
-            status.classList.remove('hidden');
-            status.textContent = 'Checking GitHub Releases for the latest executable...';
+            status.textContent = 'Downloading the latest release and restarting the application...';
 
             try {
                 const response = await fetch('{{ url_for("trigger_update") }}', {
@@ -1094,7 +1126,6 @@
                 button.textContent = 'Update Queued';
             } catch (error) {
                 status.textContent = error.message;
-                button.textContent = 'Update Now';
                 button.disabled = false;
             }
         });
