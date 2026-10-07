@@ -31,7 +31,7 @@ jobs:
           python -m pip install -r requirements.txt
 
       - name: Build hidden single-file Windows executable
-        run: pyinstaller --onefile --windowed --name "${{ env.APP_NAME }}" --add-data "templates;templates" --add-data "backups;backups" --distpath dist --workpath build --specpath build app.py
+        run: pyinstaller --onefile --windowed --name "${{ env.APP_NAME }}" --add-data "${{ github.workspace }}\templates;templates" --add-data "${{ github.workspace }}\backups;backups" --distpath dist --workpath build --specpath build app.py
 
       - name: Verify executable
         run: |
