@@ -1,3 +1,4 @@
+import argparse
 import os
 import sys
 import socket
@@ -6,6 +7,7 @@ import zipfile
 import webbrowser
 import threading
 import subprocess
+import tempfile
 import time
 import re
 import shutil
@@ -15,6 +17,8 @@ import signal
 import uuid
 from datetime import datetime, timezone
 from typing import Optional, Any
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 from flask import Flask, render_template, redirect, url_for, request, flash, jsonify, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
@@ -26,6 +30,134 @@ def get_resource_path(relative_path: str) -> str:
     """ Get absolute path to resource, works for dev and for PyInstaller """
     base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
     return os.path.join(base_path, relative_path)
+
+
+def parse_app_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
+    """Parse application arguments, including the one-time update restart flag."""
+    parser = argparse.ArgumentParser(description="Passport Safe Terminal")
+    parser.add_argument(
+        "--updated",
+        action="store_true",
+        help="Run after an OTA replacement without opening a new browser tab.",
+    )
+    return parser.parse_args(argv)
+
+
+def _ps_single_quote(value: str) -> str:
+    """Return a PowerShell-safe single-quoted literal."""
+    return "'" + value.replace("'", "''") + "'"
+
+
+def build_windows_update_command(source_path: str, target_path: str) -> str:
+    """Build the PowerShell chain used to replace the running Windows executable."""
+    source = _ps_single_quote(source_path)
+    target = _ps_single_quote(target_path)
+    return (
+        f"$source = {source}; $target = {target}; "
+        "Start-Sleep -Seconds 2; "
+        "Remove-Item -LiteralPath $target -Force; "
+        "Move-Item -LiteralPath $source -Destination $target -Force; "
+        "Start-Process -FilePath $target -ArgumentList '--updated' -WindowStyle Hidden"
+    )
+
+
+def _github_api_request(url: str, token: Optional[str] = None) -> dict:
+    """Issue a GitHub API request with a timeout and optional authentication."""
+    headers = {"Accept": "application/vnd.github+json", "User-Agent": "passport-safe-updater"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    request = Request(url, headers=headers)
+    try:
+        with urlopen(request, timeout=30) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except (HTTPError, URLError, OSError) as exc:
+        raise RuntimeError(f"GitHub API request failed: {exc}") from exc
+
+
+def download_latest_release_asset(
+    repository: str,
+    asset_name: str,
+    destination_dir: str,
+) -> tuple[str, str, str]:
+    """Download the newest release asset matching the current executable name."""
+    release_url = f"https://api.github.com/repos/{repository}/releases/latest"
+    release = _github_api_request(release_url, os.environ.get("GITHUB_TOKEN"))
+    if not isinstance(release, dict) or not release.get("assets"):
+        raise RuntimeError("The latest GitHub release has no downloadable assets.")
+
+    normalized_asset_name = asset_name.casefold()
+    matching_asset = next(
+        (
+            asset
+            for asset in release["assets"]
+            if asset.get("name", "").casefold() == normalized_asset_name
+        ),
+        None,
+    )
+    if not matching_asset or not matching_asset.get("browser_download_url"):
+        raise RuntimeError(f"GitHub release does not contain the required asset: {asset_name}")
+
+    temporary_path = os.path.join(
+        destination_dir,
+        f"{asset_name}.download",
+    )
+    request = Request(
+        matching_asset["browser_download_url"],
+        headers={
+            "Accept": "application/octet-stream",
+            "User-Agent": "passport-safe-updater",
+            **(
+                {"Authorization": f"Bearer {os.environ['GITHUB_TOKEN']}"}
+                if os.environ.get("GITHUB_TOKEN")
+                else {}
+            ),
+        },
+    )
+    with urlopen(request, timeout=120) as response, open(temporary_path, "wb") as output:
+        shutil.copyfileobj(response, output)
+
+    return temporary_path, release["tag_name"], matching_asset["browser_download_url"]
+
+
+def background_update() -> dict:
+    """Download the latest matching release asset and launch its Windows replacement chain."""
+    if os.name != "nt":
+        raise RuntimeError("OTA updates are supported on Windows only.")
+
+    current_executable = os.path.abspath(sys.argv[0])
+    executable_name = os.path.basename(current_executable).lower()
+    if not executable_name.endswith(".exe"):
+        raise RuntimeError("The current executable must have a .exe extension.")
+
+    repository = os.environ.get("GITHUB_REPOSITORY", "zalman11/school-test")
+    temporary_dir = tempfile.mkdtemp(prefix="passport-safe-update-")
+    downloaded_path, tag_name, download_url = download_latest_release_asset(
+        repository,
+        os.path.basename(current_executable),
+        temporary_dir,
+    )
+    command = build_windows_update_command(downloaded_path, current_executable)
+    powershell = subprocess.Popen(
+        [
+            "powershell.exe",
+            "-NoProfile",
+            "-NonInteractive",
+            "-WindowStyle",
+            "Hidden",
+            "-Command",
+            command,
+        ],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        creationflags=getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0),
+    )
+    return {
+        "status": "queued",
+        "release": tag_name,
+        "download_url": download_url,
+        "process_id": powershell.pid,
+    }
+
 
 # Ensure the database is saved in the actual user execution directory, NOT the temporary _MEIPASS folder
 db_dir = os.path.abspath(os.path.dirname(sys.argv[0]))
@@ -796,6 +928,20 @@ def dashboard():
                            grades=grades,
                            notifications=notifications)
 
+@app.route('/api/update', methods=['POST'])
+@login_required
+def trigger_update():
+    if not verify_admin_role():
+        return jsonify({"error": "Admin privileges required."}), 403
+
+    update_thread = threading.Thread(target=background_update, daemon=True)
+    update_thread.start()
+    return jsonify({
+        "status": "queued",
+        "message": "The latest release is being downloaded and the application will restart after replacement.",
+    }), 202
+
+
 @app.route('/settings')
 @login_required
 def settings():
@@ -1551,14 +1697,20 @@ def start_automatic_tunnel(port=5000):
     return process
 
 
-if __name__ == '__main__':
+def main() -> None:
+    args = parse_app_args()
+
     # Start Cloudflare tunnel ONLY if enabled in settings
     with app.app_context():
         cfg = db.session.get(SystemConfig, 'cloudflare_enabled')
         if cfg and cfg.value == 'true':
             tunnel_thread = threading.Thread(target=start_automatic_tunnel, args=(5000,), daemon=True)
             tunnel_thread.start()
-    
+
+    if not args.updated:
+        browser_url = tunnel_url if tunnel_url.startswith("https://") else "http://127.0.0.1:5000/"
+        webbrowser.open(browser_url)
+
     try:
         # Fire up local Flask web service
         app.run(host='0.0.0.0', port=5000, debug=False)
@@ -1570,3 +1722,7 @@ if __name__ == '__main__':
                 tunnel_process.wait(timeout=2)
             except Exception:
                 pass
+
+
+if __name__ == '__main__':
+    main()
