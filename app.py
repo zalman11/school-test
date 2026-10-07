@@ -197,7 +197,7 @@ app = Flask(
     static_folder=get_resource_path('static')
 )
 
-APP_VERSION = os.environ.get('APP_VERSION', '1.0.4')
+APP_VERSION = os.environ.get('APP_VERSION', '1.0.5')
 
 app.config['SECRET_KEY'] = 'super-secret-school-key-change-this'
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
