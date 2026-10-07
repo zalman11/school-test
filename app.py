@@ -227,6 +227,22 @@ class SystemConfig(db.Model): # type: ignore
         self.key = key
         self.value = value
 
+
+def set_system_config(
+    key: str,
+    value: str,
+    overwrite: bool = True,
+) -> SystemConfig:
+    """Create a configuration value, optionally updating an existing key."""
+    config = db.session.get(SystemConfig, key)
+    if config is None:
+        config = SystemConfig(key=key, value=value)
+        db.session.add(config)
+    elif overwrite:
+        config.value = value
+    return config
+
+
 class ScheduledRollover(db.Model): # type: ignore
     __allow_unmapped__ = True
     id: Any = db.Column(db.Integer, primary_key=True)
@@ -705,14 +721,10 @@ with app.app_context():
             except Exception:
                 db.session.rollback()
 
-    if not db.session.get(SystemConfig, 'start_grade_level'):
-        db.session.add(SystemConfig(key='start_grade_level', value='8'))
-    if not db.session.get(SystemConfig, 'end_grade_level'):
-        db.session.add(SystemConfig(key='end_grade_level', value='12'))
-    if not db.session.get(SystemConfig, 'auto_backup_enabled'):
-        db.session.add(SystemConfig(key='auto_backup_enabled', value='true'))
-    if not db.session.get(SystemConfig, 'cloudflare_enabled'):
-        db.session.add(SystemConfig(key='cloudflare_enabled', value='false'))
+    set_system_config('start_grade_level', '8', overwrite=False)
+    set_system_config('end_grade_level', '12', overwrite=False)
+    set_system_config('auto_backup_enabled', 'true', overwrite=False)
+    set_system_config('cloudflare_enabled', 'false', overwrite=False)
     
     # Seed default teacher accounts automatically
     default_teachers = ["Keren Klein", "Gavri Leichter", "Tova Stross", "Ariella Mendlowitz", "Rav Cytrin", "Madrich"]
@@ -1446,10 +1458,9 @@ def setup():
             admin = User(username=username, password_hash=generate_password_hash(password), role="Admin")
             db.session.add(admin)
             
-            cfg_start = SystemConfig(key='start_grade_level', value=str(start_val))
-            cfg_end = SystemConfig(key='end_grade_level', value=str(end_val))
-            cfg_backup = SystemConfig(key='auto_backup_enabled', value='true' if auto_backup else 'false')
-            db.session.add_all([cfg_start, cfg_end, cfg_backup])
+            set_system_config('start_grade_level', str(start_val))
+            set_system_config('end_grade_level', str(end_val))
+            set_system_config('auto_backup_enabled', 'true' if auto_backup else 'false')
             
             for lvl in range(start_val, end_val + 1):
                 db.session.add(GradeConfig(level=lvl, track=""))
