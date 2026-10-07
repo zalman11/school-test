@@ -30,8 +30,8 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
 
-      - name: Build single-file Windows executable
-        run: pyinstaller --onefile --name "${{ env.APP_NAME }}" --distpath dist --workpath build --specpath build app.py
+      - name: Build hidden single-file Windows executable
+        run: pyinstaller --onefile --windowed --name "${{ env.APP_NAME }}" --add-data "templates;templates" --add-data "backups;backups" --distpath dist --workpath build --specpath build app.py
 
       - name: Verify executable
         run: |
@@ -50,6 +50,7 @@ jobs:
             Automated Windows build for ${{ github.ref_name }}.
 
             The executable is a single-file PyInstaller build suitable for OTA installation.
+            It runs without a console window and contains the Flask templates and backup assets.
           files: |
             dist/${{ env.APP_NAME }}.exe
           overwrite_files: true
